@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: brandcourt
+      POSTGRES_USER: brandcourt
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-demo-change-me}
+    ports: ["5432:5432"]
+    volumes: ["brandcourt_db:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brandcourt -d brandcourt"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  api:
+    build: ./backend
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_VERSION: 2.0.0
+      DATABASE_URL: postgresql+asyncpg://brandcourt:${POSTGRES_PASSWORD:-local-demo-change-me}@db:5432/brandcourt
+      SECRET_KEY: ${SECRET_KEY:-change-this-local-only-secret-before-deploy}
+      CORS_ORIGINS: http://localhost:5173,http://localhost:8080
+      UPLOAD_DIR: /app/uploads
+      MODEL_MODE: ${MODEL_MODE:-deterministic}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
+    ports: ["8000:8000"]
+    volumes: ["brandcourt_uploads:/app/uploads"]
+    depends_on:
+      db: {condition: service_healthy}
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api}
+    ports: ["8080:80"]
+    depends_on: [api]
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local-model"]
+    ports: ["11434:11434"]
+    volumes: ["ollama_data:/root/.ollama"]
+volumes:
+  brandcourt_db:
+  brandcourt_uploads:
+  ollama_data:

@@ -1,0 +1,14 @@
+{
+  "label": "SIMULATED DEMO FALLBACK — FICTIONAL GLOWSERUM DATA; NOT LIVE CUSTOMER DATA",
+  "created_for": "BrandCourt judging/demo continuity",
+  "brand": "GlowSerum (fictional)",
+  "scenario": "A marketing post says \"India's #1 serum that cures acne in 7 days\" on a paid channel without a clear disclosure.",
+  "expected_advisory_findings": [
+    {"code":"IN-2","verdict":"unsupported","severity":"critical","reason":"Superlative claim requires current evidence."},
+    {"code":"IN-5","verdict":"unsupported","severity":"critical","reason":"Cure claim routes to human/legal review; not a legal determination."},
+    {"code":"IN-4","verdict":"unsupported","severity":"critical","reason":"Paid/gifted content disclosure is missing."},
+    {"code":"A11Y-ALT","verdict":"needs_human_review","severity":"warning","reason":"No alt text supplied."}
+  ],
+  "workflow": ["Run Claim Court", "Inspect evidence drawer", "Submit for review", "Resolve or explicitly sign off findings", "Approve as manager", "Export JSON/PDF report"],
+  "notice": "If the live services fail, show this JSON and state clearly that it is a prepared, simulated fallback. Do not present it as live analysis."
+}

@@ -1,0 +1,34 @@
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Python
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.pytest_cache/
+backend/*.py[cod]
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+backend/brandcourt.db
+backend/brandcourt.db-shm
+backend/brandcourt.db-wal
+backend/uploads/
+backend/.env
+frontend/.env
+
+# Build and demo artifacts
+frontend/playwright-report/
+frontend/test-results/
+brandcourt.db*
+uploads/
