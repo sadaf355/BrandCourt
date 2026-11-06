@@ -18,15 +18,91 @@ def _role(user, roles):
     if user.role not in roles: raise HTTPException(403,'Your workspace role does not permit this action.')
 
 @router.get('/review-queue')
-async def reviewer_queue(user: CurrentUser, db: DBSession):
+async def reviewer_queue(
+    user: CurrentUser,
+    db: DBSession,
+    status: str | None = Query(default=None),
+    channel: str | None = Query(default=None),
+    severity: str | None = Query(default=None),
+    creator: str | None = Query(default=None),
+    include_advisory: bool = Query(default=False),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
     _role(user, REVIEW_ROLES)
-    items=(await db.scalars(select(ContentItem).where(ContentItem.workspace_id==user.workspace_id,ContentItem.status.in_(['submitted','in_review'])).order_by(ContentItem.updated_at))).all()
+    status_val = status.default if hasattr(status, 'default') else status
+    channel_val = channel.default if hasattr(channel, 'default') else channel
+    severity_val = severity.default if hasattr(severity, 'default') else severity
+    creator_val = creator.default if hasattr(creator, 'default') else creator
+    include_advisory_val = bool(include_advisory.default if hasattr(include_advisory, 'default') else include_advisory)
+
+    query = select(ContentItem).where(ContentItem.workspace_id==user.workspace_id)
+    if status_val:
+        query = query.where(ContentItem.status == status_val)
+    else:
+        query = query.where(ContentItem.status.in_(['submitted','in_review']))
+    if channel_val:
+        query = query.where(ContentItem.channel == channel_val)
+    if creator_val:
+        query = query.where(ContentItem.created_by == creator_val)
+
+    query = query.order_by(desc(ContentItem.updated_at))
+    items = (await db.scalars(query)).all()
+    
     rows=[]
     for item in items:
         rev=await db.scalar(select(ContentRevision).where(ContentRevision.content_id==item.id,ContentRevision.workspace_id==user.workspace_id,ContentRevision.version==item.current_revision))
         findings=(await db.scalars(select(ClaimFinding).where(ClaimFinding.content_id==item.id,ClaimFinding.revision_id==rev.id,ClaimFinding.workspace_id==user.workspace_id))).all() if rev else []
-        rows.append({'id':item.id,'title':item.title,'channel':item.channel,'status':item.status,'current_revision':item.current_revision,'language':rev.detected_language if rev else 'unknown','finding_count':len(findings),'critical_count':sum(1 for f in findings if f.severity.lower() in {'critical','blocker'}),'updated_at':item.updated_at.isoformat()})
-    return rows
+        
+        has_critical = any(f.severity.lower() in {'critical','blocker'} for f in findings)
+        has_major = any(f.severity.lower() == 'major' for f in findings)
+        has_disputed = any(f.state == 'disputed' for f in findings)
+        has_advisory_only = len(findings) > 0 and all(f.severity.lower() == 'advisory' for f in findings)
+
+        # Priority score for ordering: critical/major/disputed come first
+        priority_score = 0
+        if has_critical: priority_score += 100
+        if has_disputed: priority_score += 50
+        if has_major: priority_score += 30
+
+        # Advisory items only when explicitly included or when requested
+        if has_advisory_only and not include_advisory_val and not severity_val:
+            continue
+        if severity_val and not any(f.severity.lower() == severity_val.lower() for f in findings):
+            continue
+
+        rows.append({
+            'id':item.id,
+            'title':item.title,
+            'channel':item.channel,
+            'campaign':item.campaign,
+            'status':item.status,
+            'current_revision':item.current_revision,
+            'language':rev.detected_language if rev else 'unknown',
+            'finding_count':len(findings),
+            'critical_count':sum(1 for f in findings if f.severity.lower() in {'critical','blocker'}),
+            'major_count':sum(1 for f in findings if f.severity.lower() == 'major'),
+            'disputed_count':sum(1 for f in findings if f.state == 'disputed'),
+            'has_blockers':has_critical or any(f.verdict in {'contradicted','outdated','unsupported'} for f in findings),
+            'priority_score':priority_score,
+            'updated_at':item.updated_at.isoformat(),
+        })
+
+    # Ensure limit and offset are integers even if called directly with FastAPI Query defaults
+    limit_val = int(limit.default if hasattr(limit, 'default') else limit)
+    offset_val = int(offset.default if hasattr(offset, 'default') else offset)
+
+    # Sort: critical, major and disputed items first
+    rows.sort(key=lambda r: (r['priority_score'], r['updated_at']), reverse=True)
+    total_count = len(rows)
+    paginated_rows = rows[offset_val:offset_val+limit_val]
+
+    return {
+        'items': paginated_rows,
+        'total': total_count,
+        'limit': limit_val,
+        'offset': offset_val,
+    }
 
 @router.post('/content/{content_id}/image-analysis')
 async def image_analysis(content_id: str, user: CurrentUser, db: DBSession):

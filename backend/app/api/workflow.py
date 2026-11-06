@@ -184,6 +184,25 @@ async def change_workflow(content_id: str, body: StateInput, user: CurrentUser, 
     elif action=='reopen':
         require_role(user,MANAGER_ROLES)
         if item.status!='approved': raise HTTPException(409,'Only approved content can be reopened.')
+        # Reopening creates a brand new draft revision so the approved and locked revision remains immutable
+        current=await db.scalar(select(ContentRevision).where(ContentRevision.content_id==item.id,ContentRevision.workspace_id==user.workspace_id,ContentRevision.version==item.current_revision))
+        next_ver = (current.version if current else 1) + 1
+        new_rev = ContentRevision(
+            workspace_id=user.workspace_id,
+            content_id=item.id,
+            version=next_ver,
+            caption=current.caption if current else '',
+            alt_text=current.alt_text if current else '',
+            is_ai_media=current.is_ai_media if current else False,
+            detected_language=current.detected_language if current else 'unknown',
+            creative_filename=current.creative_filename if current else None,
+            creative_storage_key=current.creative_storage_key if current else None,
+            ocr_text=current.ocr_text if current else '',
+            ocr_status=current.ocr_status if current else 'not_run',
+            created_by=user.id,
+        )
+        db.add(new_rev); await db.flush()
+        item.current_revision = new_rev.version
         item.status='draft'
     await write_audit(db,user,'content.workflow_changed',{'content_id':item.id,'action':action,'reason':body.reason.strip(),'status':item.status})
     await db.commit(); await db.refresh(item)
