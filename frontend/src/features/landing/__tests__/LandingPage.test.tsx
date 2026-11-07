@@ -5,6 +5,9 @@ import { ThemeProvider } from '../../../providers/ThemeProvider'
 import { LandingPage } from '../LandingPage'
 import { HeroShieldView } from '../components/three/HeroShieldView'
 
+// Avoid loading Three.js into jsdom
+vi.mock('../components/three/ShieldCanvas', () => ({ default: () => null }))
+
 describe('BrandCourt Public Landing Page', () => {
   beforeEach(() => {
     // Reset matchMedia to default (no reduced motion)
