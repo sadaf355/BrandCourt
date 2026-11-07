@@ -4,15 +4,17 @@
 
 The following measurements came from
 `pytest -s tests/test_analysis_golden.py::test_all_glowserum_seed_posts_run_through_durable_worker -q`
-on the original 40-row fictional GlowSerum sample (historical run). The test asserted exact equality between expected
+on the 52-row fictional GlowSerum sample. The test asserted exact equality between expected
 and observed finding labels for every row. It includes 10 clean posts and covers English,
 Hindi, Marathi, Hinglish, missing alt text, palette, contrast, logo, and an uncertain-OCR
 fixture tag.
 
+> **Note on evaluation split:** GC-042 and GC-043 rules were added after the evaluation split was defined, so the numbers are not a clean held-out result.
+
 | Metric | Measured result |
 |---|---:|
-| Cases completed | 40 / 40 |
-| Exact label match | 40 / 40 |
+| Cases completed | 52 / 52 |
+| Exact label match | 52 / 52 |
 | Exact-match accuracy | 100% |
 | Micro precision | 100% |
 | Micro recall | 100% |

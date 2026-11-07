@@ -75,3 +75,55 @@ def test_rule_required_text_must_be_near_trigger_phrase():
     finding = next(check for check in checks if check["code"] == "CUSTOM-1")
     assert finding["span_start"] == 0
     assert finding["source_note"] == "Approved guideline"
+
+
+def test_cure_claims_multilingual_positive_and_clean_negative():
+    # English
+    pos_en = layer1_checks("GlowSerum cures acne permanently.", "website", "Product bottle")
+    neg_en = layer1_checks("GlowSerum hydrates skin gently.", "website", "Product bottle")
+    assert any(c["code"] == "IN-5" for c in pos_en)
+    assert not any(c["code"] == "IN-5" for c in neg_en)
+
+    # Hindi
+    pos_hi = layer1_checks("GlowSerum से मुहांसों का इलाज होता है.", "website", "Product bottle")
+    neg_hi = layer1_checks("GlowSerum त्वचा को नमी देता है.", "website", "Product bottle")
+    assert any(c["code"] == "IN-5" for c in pos_hi)
+    assert not any(c["code"] == "IN-5" for c in neg_hi)
+
+    # Marathi
+    pos_mr = layer1_checks("GlowSerum मुळे मुरुम पूर्णपणे बरे होतात.", "website", "Product bottle")
+    neg_mr = layer1_checks("GlowSerum त्वचेला हलके हायड्रेशन देते.", "website", "Product bottle")
+    assert any(c["code"] == "IN-5" for c in pos_mr)
+    assert not any(c["code"] == "IN-5" for c in neg_mr)
+
+    # Hinglish
+    pos_hinglish = layer1_checks("GlowSerum se acne theek ho jata hai.", "website", "Product bottle")
+    neg_hinglish = layer1_checks("GlowSerum daily routine ke liye accha hai.", "website", "Product bottle")
+    assert any(c["code"] == "IN-5" for c in pos_hinglish)
+    assert not any(c["code"] == "IN-5" for c in neg_hinglish)
+
+
+def test_superlative_claims_multilingual_positive_and_clean_negative():
+    # English
+    pos_en = layer1_checks("GlowSerum is number one.", "website", "Product bottle")
+    neg_en = layer1_checks("GlowSerum is a quality serum.", "website", "Product bottle")
+    assert any(c["code"] == "IN-2" for c in pos_en)
+    assert not any(c["code"] == "IN-2" for c in neg_en)
+
+    # Hindi
+    pos_hi = layer1_checks("GlowSerum सबसे अच्छा सीरम है.", "website", "Product bottle")
+    neg_hi = layer1_checks("GlowSerum अच्छा सीरम है.", "website", "Product bottle")
+    assert any(c["code"] == "IN-2" for c in pos_hi)
+    assert not any(c["code"] == "IN-2" for c in neg_hi)
+
+    # Marathi
+    pos_mr = layer1_checks("GlowSerum नंबर एक सीरम आहे.", "website", "Product bottle")
+    neg_mr = layer1_checks("GlowSerum रोज वापरण्यासाठी छान आहे.", "website", "Product bottle")
+    assert any(c["code"] == "IN-2" for c in pos_mr)
+    assert not any(c["code"] == "IN-2" for c in neg_mr)
+
+    # Hinglish
+    pos_hinglish = layer1_checks("Yeh India ka number one serum hai!", "website", "Product bottle")
+    neg_hinglish = layer1_checks("GlowSerum bahut accha hai.", "website", "Product bottle")
+    assert any(c["code"] == "IN-2" for c in pos_hinglish)
+    assert not any(c["code"] == "IN-2" for c in neg_hinglish)

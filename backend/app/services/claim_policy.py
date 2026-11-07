@@ -6,14 +6,28 @@ from datetime import datetime, time, timezone
 from app.models.entities import normalize_severity
 
 _UNIT_FACTORS = {
-    'duration_minutes': {'day':1440,'days':1440,'week':10080,'weeks':10080,'month':43200,'months':43200,'year':525600,'years':525600,'minute':1,'minutes':1,'min':1,'mins':1,'hour':60,'hours':60,'hr':60,'hrs':60},
+    'duration_minutes': {
+        'day':1440,'days':1440,'week':10080,'weeks':10080,'month':43200,'months':43200,'year':525600,'years':525600,
+        'din':1440,'dino':1440,'दिन':1440,
+        'hafta':10080,'hafte':10080,'आठवडे':10080,'आठवड्या':10080,
+        'mahine':43200,'महिने':43200,
+        'saal':525600,'वर्ष':525600,
+        'minute':1,'minutes':1,'min':1,'mins':1,'hour':60,'hours':60,'hr':60,'hrs':60,
+    },
     'percent': {'%':1,'percent':1,'percentage':1},
     'mass_g': {'mg':0.001,'milligram':0.001,'milligrams':0.001,'g':1,'gram':1,'grams':1,'kg':1000,'kilogram':1000,'kilograms':1000},
     'volume_ml': {'ml':1,'milliliter':1,'milliliters':1,'millilitre':1,'millilitres':1,'l':1000,'liter':1000,'liters':1000,'litre':1000,'litres':1000},
     'length_mm': {'mm':1,'millimeter':1,'millimeters':1,'millimetre':1,'millimetres':1,'cm':10,'centimeter':10,'centimeters':10,'centimetre':10,'centimetres':10,'m':1000,'meter':1000,'meters':1000,'metre':1000,'metres':1000},
 }
 _UNIT_ALIASES = {unit: (dimension, factor) for dimension, units in _UNIT_FACTORS.items() for unit, factor in units.items()}
-_NUMBER_RE = re.compile(r'(?P<num>\d+(?:,\d{3})*(?:\.\d+)?)\s*(?P<unit>%|percent(?:age)?|days?|weeks?|months?|years?|hours?|hrs?|minutes?|mins?|mg|milligrams?|g|grams?|kg|kilograms?|ml|millilit(?:er|re)s?|l|lit(?:er|re)s?|mm|millimet(?:er|re)s?|cm|centimet(?:er|re)s?|m|met(?:er|re)s?)?', re.I)
+_NUMBER_RE = re.compile(
+    r'(?P<num>\d+(?:,\d{3})*(?:\.\d+)?)\s*'
+    r'(?P<unit>%|percent(?:age)?|days?|weeks?|months?|years?|hours?|hrs?|minutes?|mins?|'
+    r'dino|din|दिन|hafta|hafte|आठवडे|आठवड्या|mahine|महिने|saal|वर्ष|'
+    r'mg|milligrams?|g|grams?|kg|kilograms?|ml|millilit(?:er|re)s?|l|lit(?:er|re)s?|'
+    r'mm|millimet(?:er|re)s?|cm|centimet(?:er|re)s?|m|met(?:er|re)s?)?',
+    re.I,
+)
 _MONEY_RE = re.compile(
     r"(?:(?:₹|rs\.?|inr)\s*(?P<num>\d+(?:,\d{3})*(?:\.\d+)?)|"
     r"(?P<num_after>\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:₹|rs\.?|inr)(?!\w))",
@@ -23,10 +37,13 @@ _RISKY_CLAIM_RE = re.compile(
     r"(?:"
     r"\d|₹|\brs\.?\s*\d|\binr\s*\d|\b(?:offer|discount|save|off|price|cost|"
     r"number\s*one|no\.?\s*1|#\s*1|best|better|most|only|fastest|"
+    r"nambar\s+ek|sabse\s+accha|sabse\s+achha|india\s*ka\s+number\s+one|"
     r"cures?|treats?|heals?|clinically|dermatologist|proven|"
     r"(?:cures?|treats?|heals?|clears?|prevents?|reduces?)\s+(?:\w+\s+){0,2}(?:acne|eczema|psoriasis|blemishes|wrinkles)\b|"
+    r"theek\s*ho\s*ja(?:ta|te|ti)|"
     r"results?|reduces?|improves?|increases?|decreases?|guaranteed|"
-    r"lasts?|works?)\b"
+    r"lasts?|works?)\b|"
+    r"(?:बरे\s*होतात|ठीक\s*होतात|इलाज|पूर्णपणे|ठीक\s*हो\s*जा(?:ता|ते|ती)|सबसे\s*अच्छा|नंबर\s*(?:एक|1|वन)|नं\.?\s*1)"
     r")",
     re.I,
 )
@@ -142,7 +159,7 @@ def _normalized_number_comparison(claim: str, fact_value: str, fact_unit: str | 
         candidates.append(_unit_value(number,unit))
     compatible=[candidate for candidate in candidates if candidate[1]==expected[1]]
     if not compatible and len(candidates)==1 and candidates[0][1]=='unitless' and expected[1]!='unitless':
-        compatible=[_unit_value(float(fact_match.group('num').replace(',','')),fact_unit)]
+        compatible=[_unit_value(candidates[0][0],expected_unit)]
     if not compatible: return None
     # When multiple quantities share the same dimension, an exact match wins; otherwise compare
     # the first compatible quantity to avoid selecting a later, unrelated number opportunistically.
@@ -150,10 +167,23 @@ def _normalized_number_comparison(claim: str, fact_value: str, fact_unit: str | 
 
 def _claim_builtin_policy(claim: str):
     lower=claim.lower()
-    cure_patterns=[r'\bcures?\s+(?:acne|eczema|psoriasis|diabetes|cancer)\b',r'\bguaranteed\s+(?:cure|to cure)\b',r'\b(?:permanently|guaranteed to)\s+(?:remove|eliminate)\s+(?:acne|blemishes|wrinkles)\b']
+    cure_patterns=[
+        r'\bcures?\s+(?:acne|eczema|psoriasis|diabetes|cancer)\b',
+        r'\bguaranteed\s+(?:cure|to cure)\b',
+        r'\b(?:permanently|guaranteed to)\s+(?:remove|eliminate)\s+(?:acne|blemishes|wrinkles)\b',
+        r'\b(?:cure|theek)\s*(?:ho\s*ja(?:ta|ti|te)|karta|karega)\b',
+        r'(?:बरे\s*होतात|ठीक\s*होतात|इलाज|पूर्णपणे|ठीक\s*हो\s*जा(?:ता|ते|ती))',
+    ]
     if any(re.search(pattern,lower) for pattern in cure_patterns):
         return ('unsupported','critical','IN-5','Potentially restricted cure or guaranteed-result claim. BrandCourt routes this to human/legal review; it is not a legal determination.')
-    if re.search(r"\b(?:india['’]s|india is|the)\s*(?:#\s*1|number\s+one|no\.?\s*1|best|only)\b|\bindia['’]s\s+#\s*1\b",lower):
+    if re.search(
+        r"(?:"
+        r"\b(?:india['’]s\s+|india\s+is\s+|the\s+|india\s*ka\s+)?(?:#\s*1|number\s+one|no\.?\s*1|nambar\s+ek|sabse\s+acc?h?a)\b|"
+        r"\b(?:india['’]s|india is|the)\s*(?:best|only)\b|"
+        r"(?:सबसे\s*अच्छा|नंबर\s*(?:एक|1|वन)|नं\.?\s*1)"
+        r")",
+        lower,
+    ):
         return ('unsupported','critical','IN-2','A superlative or #1 claim needs specific, current evidence. No rank-specific proof was established by this baseline; unsupported is not a finding that the claim is false.')
     return None
 

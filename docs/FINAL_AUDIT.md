@@ -15,8 +15,10 @@ durable review job, checks the worker's completed result, and records the same G
 SHA-256 per prediction. The scorer reports exact-match accuracy, micro precision/recall/F1,
 false positives/negatives, failures, and worker latency. Failed cases are not silently omitted.
 
-Dataset: 40 fictional GlowSerum posts; SHA-256
+Dataset: 52 fictional GlowSerum posts; SHA-256
 `9801e125d9912525d4562c2ad2901dc0b42ddb12712506c7414b50c6fbdbb6e2`.
+
+> **Note on evaluation split:** GC-042 and GC-043 rules were added after the evaluation split was defined, so the numbers are not a clean held-out result.
 
 | Variant | Completed | Failures | Exact-match accuracy | Precision | Recall | F1 | False positives | False negatives | Median worker ms | Slowest worker ms |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|

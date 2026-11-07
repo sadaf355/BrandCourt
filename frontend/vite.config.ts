@@ -10,5 +10,13 @@ export default defineConfig({
     setupFiles: ['./src/setupTests.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     testTimeout: 25000,
+    pool: 'forks',
+    ...({
+      poolOptions: {
+        forks: {
+          singleFork: true,
+        },
+      },
+    }),
   }
 })

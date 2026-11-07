@@ -71,3 +71,24 @@ def test_date_only_fact_validity_end_is_inclusive():
     assert fact_outside_validity_window(
         None, datetime(2026, 11, 5, 0, tzinfo=timezone.utc), today
     )
+
+
+def test_multilingual_time_units_and_unitless_fallback():
+    from app.services.claim_policy import compare_claim_to_fact
+
+    # Hindi / Hinglish time units
+    assert compare_claim_to_fact("hydration 7 din", "4", "weeks") is False
+    assert compare_claim_to_fact("hydration 28 din", "4", "weeks") is True
+    assert compare_claim_to_fact("hydration 7 दिन", "4", "weeks") is False
+    assert compare_claim_to_fact("hydration 28 दिन", "4", "weeks") is True
+    assert compare_claim_to_fact("hydration 4 hafte", "4", "weeks") is True
+    assert compare_claim_to_fact("hydration 4 आठवडे", "4", "weeks") is True
+    assert compare_claim_to_fact("hydration 4 आठवड्या", "4", "weeks") is True
+    assert compare_claim_to_fact("hydration 1 mahine", "4", "weeks") is False
+    assert compare_claim_to_fact("hydration 1 महिने", "4", "weeks") is False
+    assert compare_claim_to_fact("hydration 1 saal", "1", "years") is True
+    assert compare_claim_to_fact("hydration 1 वर्ष", "1", "years") is True
+
+    # Unitless claim number fallback: must not silently match mismatched number
+    assert compare_claim_to_fact("hydration 7", "4", "weeks") is False
+    assert compare_claim_to_fact("hydration 4", "4", "weeks") is True

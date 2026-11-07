@@ -248,6 +248,8 @@ def test_all_glowserum_seed_posts_run_through_durable_worker(
                 labels.add("unsupported_superlative")
             if "IN-5" in codes:
                 labels.add("restricted_health_claim")
+            if "IN-6" in codes:
+                labels.add("missing_ai_disclosure")
             if "brand_term_list" in types:
                 labels.add("banned_term")
             if "IN-4" in codes:
