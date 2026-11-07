@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   ShieldCheck,
@@ -16,6 +16,9 @@ import {
   Settings,
   Scale,
   Cpu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelLeft,
 } from 'lucide-react'
 import { User } from '../../types/api'
 import { ThemeToggle } from '../ThemeToggle'
@@ -31,6 +34,26 @@ interface AppShellProps {
 export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, children }: AppShellProps) {
   const location = useLocation()
   const roleName = user.role === 'admin' ? 'Guideline owner' : user.role.charAt(0).toUpperCase() + user.role.slice(1)
+
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('brandcourt_sidebar_collapsed') === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  const toggleSidebar = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('brandcourt_sidebar_collapsed', String(next))
+      } catch (_err) {
+        // Ignore localStorage quota or private-browsing errors
+      }
+      return next
+    })
+  }
 
   const navItems = [
     { label: 'Dashboard', icon: LayoutDashboard, to: '/app/dashboard', roles: ['creator', 'reviewer', 'manager', 'admin'] },
@@ -52,21 +75,46 @@ export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, c
   const visibleNav = navItems.filter((item) => item.roles.includes(user.role))
 
   return (
-    <div className="app-shell" style={{ minHeight: '100vh', display: 'flex' }}>
+    <div className="app-shell">
       {/* Sidebar Navigation */}
-      <aside className="sidebar" style={{ width: '260px', flexShrink: 0 }}>
-        <NavLink to="/app/dashboard" className="brand-lockup" aria-label="BrandCourt Home">
-          <span className="brand-mark">
-            <ShieldCheck size={21} strokeWidth={2.1} />
-          </span>
-          <span className="brand-word">
-            BrandCourt<span className="brand-period">.</span>
-            <small>GOVERNANCE PLATFORM</small>
-          </span>
-        </NavLink>
+      <aside
+        className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''}`}
+        aria-label="Workspace sidebar navigation"
+      >
+        <div className="sidebar-header-row">
+          <NavLink
+            to="/app/dashboard"
+            className="brand-lockup"
+            aria-label="BrandCourt Home"
+            title="BrandCourt Home"
+          >
+            <span className="brand-mark">
+              <ShieldCheck size={21} strokeWidth={2.1} />
+            </span>
+            {!isCollapsed && (
+              <span className="brand-word">
+                BrandCourt<span className="brand-period">.</span>
+                <small>GOVERNANCE PLATFORM</small>
+              </span>
+            )}
+          </NavLink>
+
+          <button
+            type="button"
+            className="sidebar-toggle-btn"
+            onClick={toggleSidebar}
+            title={isCollapsed ? 'Open sidebar' : 'Collapse sidebar'}
+            aria-label={isCollapsed ? 'Open sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
+        </div>
 
         {/* Workspace details */}
-        <div className="workspace-switcher" style={{ margin: '1rem 0' }}>
+        <div
+          className="workspace-switcher"
+          title={`${workspaceName} • ${roleName} access`}
+        >
           <span className="workspace-avatar">
             {user.full_name
               .split(' ')
@@ -75,13 +123,15 @@ export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, c
               .join('')
               .toUpperCase()}
           </span>
-          <span className="workspace-switcher__copy">
-            <b>{workspaceName}</b>
-            <small>{roleName} access</small>
-          </span>
+          {!isCollapsed && (
+            <span className="workspace-switcher__copy">
+              <b>{workspaceName}</b>
+              <small>{roleName} access</small>
+            </span>
+          )}
         </div>
 
-        <div className="nav-section-label">NAVIGATION</div>
+        {!isCollapsed && <div className="nav-section-label">NAVIGATION</div>}
         <nav className="side-nav" aria-label="Workspace navigation">
           {visibleNav.map((item) => {
             const Icon = item.icon
@@ -90,113 +140,82 @@ export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, c
               <NavLink
                 key={item.to}
                 to={item.to}
+                title={item.label}
                 className={`nav-link ${isActive ? 'nav-link--active' : ''}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.65rem',
-                  padding: '0.55rem 0.85rem',
-                  borderRadius: '6px',
-                  fontSize: '0.85rem',
-                  textDecoration: 'none',
-                  color: isActive ? 'var(--accent, #818cf8)' : 'var(--color-text-secondary, #cbd5e1)',
-                  backgroundColor: isActive ? 'var(--color-bg-subtle, rgba(255, 255, 255, 0.08))' : 'transparent',
-                  fontWeight: isActive ? 600 : 400,
-                  marginBottom: '0.2rem',
-                }}
               >
-                <Icon size={16} />
-                <span>{item.label}</span>
+                <Icon size={17} />
+                {!isCollapsed && <span>{item.label}</span>}
               </NavLink>
             )
           })}
         </nav>
 
-        <div className="nav-section-label nav-section-label--lower" style={{ marginTop: '1.5rem' }}>
-          SETTINGS
-        </div>
-        <NavLink
-          to="/app/settings/profile"
-          className="nav-link"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.65rem',
-            padding: '0.55rem 0.85rem',
-            borderRadius: '6px',
-            fontSize: '0.85rem',
-            textDecoration: 'none',
-            color: 'var(--color-text-secondary, #cbd5e1)',
-          }}
-        >
-          <Settings size={16} />
-          <span>Profile Settings</span>
-        </NavLink>
-        {user.role === 'admin' && (
-          <NavLink
-            to="/app/settings/workspace"
-            className="nav-link"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              padding: '0.55rem 0.85rem',
-              borderRadius: '6px',
-              fontSize: '0.85rem',
-              textDecoration: 'none',
-              color: 'var(--color-text-secondary, #cbd5e1)',
-            }}
-          >
-            <Users size={16} />
-            <span>Workspace Members</span>
-          </NavLink>
-        )}
-
-        <div className="sidebar-bottom" style={{ marginTop: 'auto', paddingTop: '1.5rem' }}>
-          <div className="sidebar-version">
-            <span className="version-dot" /> BrandCourt <span>v2.0.0</span>
+        {!isCollapsed && (
+          <div className="nav-section-label nav-section-label--lower">
+            SETTINGS
           </div>
+        )}
+        <nav className="side-nav" aria-label="Settings navigation">
+          <NavLink
+            to="/app/settings/profile"
+            title="Profile Settings"
+            className={({ isActive }) => `nav-link ${isActive ? 'nav-link--active' : ''}`}
+          >
+            <Settings size={17} />
+            {!isCollapsed && <span>Profile Settings</span>}
+          </NavLink>
+          {user.role === 'admin' && (
+            <NavLink
+              to="/app/settings/workspace"
+              title="Workspace Members"
+              className={({ isActive }) => `nav-link ${isActive ? 'nav-link--active' : ''}`}
+            >
+              <Users size={17} />
+              {!isCollapsed && <span>Workspace Members</span>}
+            </NavLink>
+          )}
+        </nav>
+
+        <div className="sidebar-bottom">
+          {!isCollapsed ? (
+            <div className="sidebar-version">
+              <span className="version-dot" /> BrandCourt <span>v2.0.0</span>
+            </div>
+          ) : (
+            <div className="sidebar-version sidebar-version--collapsed" title="BrandCourt v2.0.0">
+              <span className="version-dot" />
+            </div>
+          )}
         </div>
       </aside>
 
       {/* Main Page Area */}
-      <div className="app-main" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <header
-          className="topbar"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0.75rem 1.5rem',
-            borderBottom: '1px solid var(--color-border, rgba(148, 163, 184, 0.15))',
-          }}
-        >
-          <div className="breadcrumbs" style={{ fontSize: '0.85rem', color: 'var(--color-text-muted, #94a3b8)' }}>
-            <span>Workspace</span>
-            <span className="breadcrumb-slash" style={{ margin: '0 0.5rem' }}>
-              /
-            </span>
-            <strong style={{ color: 'var(--color-text-primary, #ffffff)' }}>{workspaceName}</strong>
+      <div className="app-main">
+        <header className="topbar">
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <button
+              type="button"
+              className="topbar-sidebar-toggle"
+              onClick={toggleSidebar}
+              title={isCollapsed ? 'Open sidebar' : 'Collapse sidebar'}
+              aria-label={isCollapsed ? 'Open sidebar' : 'Collapse sidebar'}
+            >
+              <PanelLeft size={18} />
+            </button>
+
+            <div className="breadcrumbs">
+              <span>Workspace</span>
+              <span className="breadcrumb-slash">/</span>
+              <b>{workspaceName}</b>
+            </div>
           </div>
 
-          <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div className="topbar-actions">
             <NotificationBell />
             <ThemeToggle />
             <div
               className="profile-avatar"
               title={`${user.full_name} (${roleName})`}
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--accent, #6366f1)',
-                color: '#ffffff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-              }}
             >
               {user.full_name
                 .split(' ')
@@ -210,22 +229,14 @@ export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, c
               onClick={onSignOut}
               title="Sign out"
               aria-label="Sign out"
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--color-text-muted, #94a3b8)',
-                cursor: 'pointer',
-                padding: '4px',
-              }}
             >
               <LogOut size={16} />
             </button>
           </div>
         </header>
 
-        <main style={{ flex: 1 }}>{children}</main>
+        <main style={{ flex: 1, width: '100%', boxSizing: 'border-box' }}>{children}</main>
       </div>
     </div>
   )
 }
-
