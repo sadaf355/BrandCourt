@@ -20,6 +20,7 @@ from app.models.entities import (
     AuditEvent,
     AICall,
     User,
+    Workspace,
 )
 from app.services.reports import build_report_data, generate_pdf_report
 
@@ -35,6 +36,9 @@ class ModelSettingsUpdate(BaseModel):
 async def get_insights_summary(user: CurrentUser, db: DBSession):
     """Workspace-wide high-level operational and governance metrics."""
     ws_id = user.workspace_id
+    workspace = await db.scalar(select(Workspace).where(Workspace.id == ws_id))
+    workspace_settings = dict(workspace.settings or {}) if workspace else {}
+    effective_model_mode = str(workspace_settings.get("model_mode") or settings.model_mode).lower()
 
     total_items = (
         await db.scalar(
@@ -141,7 +145,7 @@ async def get_insights_summary(user: CurrentUser, db: DBSession):
         "expiring_facts_count": len(expiring_facts),
         "average_approval_hours": avg_approval_hours,
         "average_review_rounds": avg_rounds,
-        "model_mode": settings.model_mode.lower(),
+        "model_mode": effective_model_mode,
         "is_seeded_reference": len(approval_durations) == 0,
     }
 
@@ -407,29 +411,41 @@ async def get_model_settings(user: CurrentUser, db: DBSession):
         for c in recent_calls
     ]
 
+    workspace = await db.scalar(select(Workspace).where(Workspace.id == ws_id))
+    workspace_settings = dict(workspace.settings or {}) if workspace else {}
+    model_mode = str(workspace_settings.get("model_mode") or settings.model_mode).lower()
+    ollama_enabled = model_mode == "ollama"
+
     return {
-        "local_model_enabled": settings.model_mode.lower() == "local",
+        "local_model_enabled": ollama_enabled,
         "active_models": [
             {
-                "name": "Deterministic Baseline Engine v1",
+                "name": "Deterministic Baseline Engine",
                 "provider": "deterministic",
-                "purpose": "Rules check, exact claims matching, unit conversions",
+                "purpose": "Rule checks, exact claim matching and policy evaluation",
                 "is_local": True,
                 "status": "active",
             },
             {
-                "name": "Sentence-Transformers All-MiniLM-L6-v2",
-                "provider": "local_embeddings",
-                "purpose": "Semantic guideline & precedent similarity retrieval",
+                "name": "Hashing Trigram Retrieval",
+                "provider": "local",
+                "purpose": "Lexical and local hashing-vector retrieval for rules and precedents",
                 "is_local": True,
-                "status": "active",
+                "status": "standby" if ollama_enabled else "active",
             },
             {
-                "name": "Ollama / Llama-3-8B-Instruct",
-                "provider": "ollama_local",
-                "purpose": "Complex ambiguity analysis (masked payload only)",
+                "name": f"Ollama · {settings.ollama_model}",
+                "provider": "ollama",
+                "purpose": "Optional masked ambiguity adjudication and NLI",
                 "is_local": True,
-                "status": "ready" if settings.model_mode.lower() == "local" else "disabled",
+                "status": "configured" if ollama_enabled else "disabled",
+            },
+            {
+                "name": f"Ollama Embeddings · {settings.ollama_embedding_model}",
+                "provider": "ollama",
+                "purpose": "Optional local embeddings for semantic retrieval",
+                "is_local": True,
+                "status": "configured" if ollama_enabled else "disabled",
             },
         ],
         "data_flow_log": data_flow_log,
@@ -451,21 +467,26 @@ async def update_model_settings(
     if user.role != "admin":
         raise HTTPException(403, "Only workspace administrators may change model settings.")
 
-    # Record the change in the audit log
+    workspace = await db.scalar(select(Workspace).where(Workspace.id == user.workspace_id))
+    if not workspace:
+        raise HTTPException(404, "Workspace not found.")
+
+    settings_data = dict(workspace.settings or {})
+    model_mode = "ollama" if body.local_model_enabled else "deterministic"
+    settings_data["model_mode"] = model_mode
+    workspace.settings = settings_data
+
     await write_audit(
         db,
         user,
-        "model_settings.updated",
-        {
-            "local_model_enabled": body.local_model_enabled,
-            "default_model": body.default_model,
-        },
+        "workspace.model_mode_changed",
+        {"model_mode": model_mode},
     )
     await db.commit()
 
     return {
         "local_model_enabled": body.local_model_enabled,
-        "default_model": body.default_model,
-        "message": f"Model configuration updated. Local mode is now {'enabled' if body.local_model_enabled else 'disabled'}.",
+        "default_model": settings.ollama_model if body.local_model_enabled else "deterministic_baseline",
+        "message": f"Workspace analysis mode changed to {model_mode}.",
     }
 

@@ -4,7 +4,6 @@ import {
   Sparkles,
   ShieldCheck,
   ShieldAlert,
-  ArrowRight,
   CheckCircle2,
   XCircle,
   HelpCircle,

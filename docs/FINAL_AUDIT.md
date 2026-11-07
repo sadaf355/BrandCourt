@@ -93,3 +93,16 @@ No Person B-owned files (`backend/app/api/release.py`, `backend/app/api/workflow
 `frontend/**`, or Person B report/notification modules) were changed for this sprint. Existing
 worktree changes from earlier Person A A1–A3/A4 work remain; this audit does not claim they were
 created in this final sprint.
+
+
+## Follow-up production-readiness corrections (2026-11-07)
+
+The current repository includes these corrections after the historical A4 audit above:
+
+- The PostgreSQL `vector` extension is created in the foundation migration `0001_phase1`, before any later migration adds `VECTOR` columns. Migration `0008_schema_freeze` no longer owns extension creation. The PostgreSQL migration test asserts the extension exists and verifies vector columns after a clean upgrade.
+- ESLint config sets `argsIgnorePattern: '^_'` for TypeScript unused-variable checks. The accessibility test no longer uses `@ts-ignore`; unused `useLocation`, icon, React/type and Node module imports called out in the cleanup review were removed.
+- Direct OCR in the workflow endpoint uses `asyncio.to_thread`. The content analysis and legacy image-analysis endpoints also dispatch the synchronous `analyze_image` pipeline through `asyncio.to_thread`; that pipeline contains Tesseract and OpenCV operations.
+- The 52-case evaluation dataset, `EVALUATION.md`, and `PHASE4_RUNBOOK.md` are retained. Historical 40-case measurements remain labelled as historical; no metrics are inferred for the expanded 52-case set.
+- The Docker image defaults `PORT=8000` and binds Uvicorn to `${PORT:-8000}`. `render.yaml` explicitly configures `PORT=8000`, S3 environment keys, Neon connection string input, production CORS and the in-process worker.
+
+Local verification in this environment: Python compilation passed; Neon URL normalization checks passed; a clean SQLite Alembic upgrade reached `0008_schema_freeze` and created 24 tables; Render and Compose YAML parsed successfully. A live PostgreSQL migration, npm installation/lint/test/build, Playwright GlowSerum flow, Ollama evaluation and hosted deployment were not run in this environment. The package registry was unreachable and required Python/Node dependencies were not available locally.

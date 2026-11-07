@@ -328,6 +328,9 @@ def test_alembic_upgrade_on_clean_postgresql_database():
             database=database_name,
         )
         try:
+            vector_extension = await connection.fetchval(
+                "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector')"
+            )
             vector_type = await connection.fetchval(
                 """
                 SELECT format_type(attribute.atttypid, attribute.atttypmod)
@@ -375,6 +378,7 @@ def test_alembic_upgrade_on_clean_postgresql_database():
                 """
             )
             assert alembic_revision == "0008_schema_freeze"
+            assert vector_extension is True
             assert vector_type.startswith("vector"), vector_type
             assert fact_vector_type.startswith("vector"), fact_vector_type
             assert precedent_vector_type.startswith("vector"), precedent_vector_type

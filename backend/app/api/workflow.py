@@ -1,10 +1,11 @@
+import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 from sqlalchemy import select, desc
 from app.api.deps import DBSession, CurrentUser, write_audit
-from app.core.config import settings
+from app.core.storage import get_storage
 from app.models.entities import ContentItem, ContentRevision, ClaimFinding, ReviewComment, FindingDecision, ReviewJob
 from app.services.claim_policy import is_approval_blocker, decision_clears_approval_block
 
@@ -26,6 +27,18 @@ class StateInput(BaseModel):
     action: str = Field(pattern='^(submit|start_review|approve|reject|reopen)$')
     reason: str = Field(default='', max_length=3000)
 
+def _run_stored_tesseract_ocr(storage, storage_key: str) -> str:
+    """Materialize the object and run Pillow/Tesseract outside the event loop."""
+    from PIL import Image
+    import pytesseract
+
+    with storage.materialize(storage_key) as image_path:
+        with Image.open(image_path) as image:
+            if image.width * image.height > 40_000_000:
+                raise HTTPException(413, 'Image dimensions exceed the 40 megapixel OCR safety limit.')
+            return pytesseract.image_to_string(image.convert('RGB'), timeout=15).strip()
+
+
 def comment_view(c, user_name='Team member'):
     return {'id':c.id,'content_id':c.content_id,'finding_id':c.finding_id,'user_id':c.user_id,'user_name':user_name,'body':c.body,'created_at':c.created_at.isoformat()}
 
@@ -46,13 +59,10 @@ async def run_ocr(content_id: str, user: CurrentUser, db: DBSession):
         rev.ocr_text=''; rev.ocr_status='unsupported_vector'
         result={'status':'unsupported_vector','text':'','message':'OCR is only enabled for raster images (PNG, JPG, WEBP, GIF). SVG remains attached but must be exported to a raster image for OCR.'}
     else:
-        image_path=Path(settings.upload_dir)/rev.creative_storage_key
         try:
-            from PIL import Image
-            import pytesseract
-            with Image.open(image_path) as image:
-                if image.width*image.height > 40_000_000: raise HTTPException(413,'Image dimensions exceed the 40 megapixel OCR safety limit.')
-                text=pytesseract.image_to_string(image.convert('RGB'), timeout=15).strip()
+            text = await asyncio.to_thread(
+                _run_stored_tesseract_ocr, get_storage(), rev.creative_storage_key
+            )
             rev.ocr_text=text; rev.ocr_status='completed' if text else 'no_text_found'
             result={'status':rev.ocr_status,'text':text,'message':'Extracted image text is included in the next Claim Court run.' if text else 'No text was detected. Text checks can still run on the caption.'}
         except ImportError:

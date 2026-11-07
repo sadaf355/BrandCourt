@@ -40,6 +40,9 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
+    env:
+      VITE_USE_MOCK: 'false'
+      VITE_API_BASE_URL: http://127.0.0.1:8000/api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

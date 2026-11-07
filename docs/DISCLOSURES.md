@@ -1,67 +1,33 @@
-# Disclosures, Models, Libraries & Asset Attributions
+# Models, analysis and asset disclosures
 
-## 1. AI Models & Inference Services
+## Analysis methods
 
-| Provider / Engine | Model / Artifact | Purpose | Hosting / Execution | Data Privacy Guarantee |
-| :--- | :--- | :--- | :--- | :--- |
-| **BrandCourt Deterministic** | Rules Engine v1.0 | Regulatory checks (ASCI), metric normalization, regex scans | In-Process / Local | 100% on-device, zero outbound network calls |
-| **Hugging Face / PyTorch** | `sentence-transformers/all-MiniLM-L6-v2` | Guideline semantic similarity and precedent retrieval | Local embeddings | Vector calculations run locally in Python worker |
-| **Ollama / Local LLM** | `meta-llama/Llama-3-8B-Instruct` | Ambiguity analysis and compliant fix suggestions | Local / Air-Gapped | Operates exclusively on pre-masked payloads |
+| Method | Current implementation | Purpose | Limitations |
+|---|---|---|---|
+| Deterministic checks | In-process Python rules, pattern checks and claim policy | Repeatable checks against configured brand rules and facts | Heuristics can miss context and require human review |
+| Local retrieval | `hashing-trigram-v1` vectors and lexical similarity | Retrieve potentially relevant rules and precedents | Not a pretrained language embedding model; similarity is not proof |
+| Optional local model | Ollama chat/NLI and embedding endpoints when configured | Additional ambiguity analysis and retrieval context | Requires a reachable Ollama service and downloaded models; unavailable results must remain uncertain |
+| Optional hosted model | OpenAI-compatible chat endpoint when explicitly configured | Schema-constrained model adjudication | Requires an external provider, credentials and appropriate data-processing approval |
+| Image text extraction | Tesseract through the Python OCR integration | Extract text from supported raster images | Requires the Tesseract executable; OCR can be incomplete or incorrect |
 
----
+Model output is validated against an expected schema. Adjudication quotes must match the stored fact text after approved masking restoration. A model response does not independently establish that a claim is true.
 
-## 2. Open-Source Libraries & Frameworks
+## Backend libraries
 
-### Backend Stack
-- **FastAPI** & **Starlette**: Async REST API endpoints and middleware.
-- **SQLAlchemy 2.0 (Async)**: ORM, query construction, and multi-tenant isolation.
-- **Alembic**: Relational database migration management.
-- **Pydantic v2**: High-performance request/response data validation.
-- **Python-JOSE** & **Passlib (Bcrypt)**: JWT authentication and salted credential hashing.
-- **Pytest** & **pytest-asyncio**: Automated unit and integration test runners.
+The backend uses FastAPI, Starlette, Pydantic Settings, SQLAlchemy 2.x, Alembic, asyncpg, aiosqlite, PyJWT, argon2-cffi, httpx, boto3, Pillow, pytesseract, OpenCV, pypdf and python-docx. Automated tests use pytest and httpx.
 
-### Frontend Stack
-- **React 19** & **TypeScript**: Component model and strict typing.
-- **Vite**: Modern frontend bundling and local HMR dev server.
-- **TanStack Query (React Query)**: Asynchronous server state and cache synchronization.
-- **Recharts**: Responsive SVG compliance analytics and KPI charts.
-- **Tailwind CSS**: Utility-first styling with dual dark/light theme support.
-- **Lucide React**: Clean iconography for compliance navigation and actions.
-- **Playwright** & **Axe-Core**: End-to-end browser automation and WCAG 2.1 AA accessibility verification.
+## Frontend libraries
 
----
+The frontend uses React, TypeScript, Vite, React Router, TanStack Query, React Hook Form, Zod, Recharts, Lucide React, Three.js, Vitest, Testing Library, Playwright and axe-core. Styling is implemented with the project's CSS design system; Tailwind CSS is not a runtime dependency.
 
-## 3. Templates & Starter Content
+## Starter policy and demo data
 
-- **Starter India Rules Pack**: Heuristic guideline rules modeled on publicly available advertising codes (ASCI/ASI). Designed to assist human review workflows; does not constitute formal legal counsel.
-- **Aurora Brand Workspace**: Fictional cosmetic and skincare brand created purely for demonstration and compliance workflow verification.
+The India rules pack is starter guidance for internal review, not legal advice or a substitute for current regulatory review. GlowSerum/Aurora is fictional demonstration data and must not be represented as a real brand or clinical evidence.
 
----
+## Landing-page imagery
 
-## 4. Photography Attributions
+The landing page contains image assets under `frontend/public/landing/`. Review the source and applicable licence information before replacing, redistributing or reusing those assets outside this repository.
 
-All imagery on the public landing page is royalty-free and sourced under the Unsplash Free License:
+## Product scope
 
-1. **Creative and Marketing Team Reviewing Content**
-   - **Path**: `frontend/public/landing/team.webp`
-   - **Source**: [Unsplash photo-1522071820081-009f0129c71c](https://images.unsplash.com/photo-1522071820081-009f0129c71c)
-   - **Photographer**: Annie Spratt
-   - **Licence**: Unsplash License (free to use for commercial and non-commercial purposes)
-
-2. **Skincare Product Flat-Lay**
-   - **Path**: `frontend/public/landing/skincare.webp`
-   - **Source**: [Unsplash photo-1556228720-195a672e8a03](https://images.unsplash.com/photo-1556228720-195a672e8a03)
-   - **Photographer**: Content Pixie
-   - **Licence**: Unsplash License (free to use for commercial and non-commercial purposes)
-
-3. **Creative Workspace Desk**
-   - **Path**: `frontend/public/landing/desk.webp`
-   - **Source**: [Unsplash photo-1499750310107-5fef28a66643](https://images.unsplash.com/photo-1499750310107-5fef28a66643)
-   - **Photographer**: Andrew Neel
-   - **Licence**: Unsplash License (free to use for commercial and non-commercial purposes)
-
----
-
-## 5. Platform Scope & Governance Disclaimer
-
-BrandCourt operates strictly as an internal compliance verification, claim audit, and decision tracking system. **It does not connect to, manage, or publish content to any third-party advertising or social media platforms.**
+BrandCourt does not connect to, manage or publish content to third-party advertising or social-media platforms. It supports internal review, governance and export workflows only.

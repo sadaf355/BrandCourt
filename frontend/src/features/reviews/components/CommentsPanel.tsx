@@ -1,7 +1,7 @@
 /**
  * CommentsPanel – B3 Requirement 3
  * Threaded comments per content item and per finding.
- * Short-polls every 10 s. Resolve button available on top-level comments.
+ * Short-polls every 10 s. Replies are supported; resolution is read-only until its API is available.
  */
 import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -47,15 +47,6 @@ export function CommentsPanel({
     onError: (err: Error) => showToast(err.message, 'error'),
   })
 
-  const resolveMutation = useMutation({
-    mutationFn: (commentId: string) => apiClient.resolveComment(contentId, commentId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey })
-      showToast('Comment resolved.', 'success')
-    },
-    onError: (err: Error) => showToast(err.message, 'error'),
-  })
-
   const handleSubmit = useCallback(() => {
     const trimmed = newBody.trim()
     if (!trimmed) return
@@ -95,8 +86,6 @@ export function CommentsPanel({
               setReplyTo({ id, name })
               setNewBody(`@${name} `)
             }}
-            onResolve={(id) => resolveMutation.mutate(id)}
-            isResolvePending={resolveMutation.isPending}
           />
         ))}
       </ul>
@@ -151,23 +140,13 @@ export function CommentsPanel({
 function CommentThread({
   comment,
   onReply,
-  onResolve,
-  isResolvePending,
 }: {
   comment: Comment
   onReply: (id: string, name: string) => void
-  onResolve: (id: string) => void
-  isResolvePending: boolean
 }) {
   return (
     <li className={`space-y-2 ${comment.resolved ? 'opacity-60' : ''}`}>
-      <CommentBubble
-        comment={comment}
-        onReply={onReply}
-        onResolve={onResolve}
-        isResolvePending={isResolvePending}
-        isRoot
-      />
+      <CommentBubble comment={comment} onReply={onReply} />
       {comment.replies && comment.replies.length > 0 && (
         <ul className="ml-6 space-y-2 border-l-2 border-gray-100 dark:border-gray-700 pl-3">
           {comment.replies.map((reply) => (
@@ -175,9 +154,6 @@ function CommentThread({
               <CommentBubble
                 comment={reply}
                 onReply={onReply}
-                onResolve={onResolve}
-                isResolvePending={isResolvePending}
-                isRoot={false}
               />
             </li>
           ))}
@@ -190,15 +166,9 @@ function CommentThread({
 function CommentBubble({
   comment,
   onReply,
-  onResolve,
-  isResolvePending,
-  isRoot,
 }: {
   comment: Comment
   onReply: (id: string, name: string) => void
-  onResolve: (id: string) => void
-  isResolvePending: boolean
-  isRoot: boolean
 }) {
   return (
     <article className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700
@@ -219,17 +189,7 @@ function CommentBubble({
             </span>
           )}
         </div>
-        {isRoot && !comment.resolved && (
-          <button
-            onClick={() => onResolve(comment.id)}
-            disabled={isResolvePending}
-            className="text-xs text-gray-400 hover:text-green-600 dark:hover:text-green-400
-                       disabled:opacity-40 transition-colors"
-            aria-label="Mark as resolved"
-          >
-            Resolve
-          </button>
-        )}
+
       </div>
       <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
         {comment.body}

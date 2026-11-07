@@ -1,11 +1,11 @@
 import asyncio
 from logging.config import fileConfig
-from sqlalchemy import pool, engine_from_config, engine_from_config
+from sqlalchemy import pool, engine_from_config
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from alembic.operations.batch import BatchOperationsImpl
-from app.core.config import settings
+from app.core.config import settings, normalize_database_url
 from app.db.base import Base
 import app.models.entities
 from sqlalchemy import ForeignKeyConstraint
@@ -14,7 +14,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 if settings.database_url:
-    config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
+    config.set_main_option("sqlalchemy.url", normalize_database_url(settings.database_url).replace("%", "%%"))
 
 target_metadata = Base.metadata
 constraint_naming_convention = {
@@ -40,7 +40,7 @@ BatchOperationsImpl.add_constraint = _batch_add_constraint_with_fk_name
 
 
 def run_migrations_offline() -> None:
-    url = settings.database_url or config.get_main_option("sqlalchemy.url")
+    url = normalize_database_url(settings.database_url or config.get_main_option("sqlalchemy.url"))
     context.configure(url=url, target_metadata=target_metadata, literal_binds=True, dialect_opts={"paramstyle": "named"}, compare_type=True)
     with context.begin_transaction():
         context.run_migrations()
@@ -74,7 +74,7 @@ def run_migrations_online_sync() -> None:
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    migration_url = settings.database_url or config.get_main_option("sqlalchemy.url")
+    migration_url = normalize_database_url(settings.database_url or config.get_main_option("sqlalchemy.url"))
     if migration_url.startswith("sqlite:///") or migration_url.startswith("postgresql://"):
         run_migrations_online_sync()
     else:

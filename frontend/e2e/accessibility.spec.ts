@@ -4,8 +4,6 @@
  * Run with: npx playwright test e2e/accessibility.spec.ts
  */
 import { test, expect } from '@playwright/test'
-import * as fs from 'fs'
-import * as path from 'path'
 
 // Locate axe-core source file
 const axePath = require.resolve('axe-core')
@@ -40,8 +38,8 @@ test.describe('Accessibility audits with Axe', () => {
 
       // Run axe in the browser context
       const results = await page.evaluate(async () => {
-        // @ts-ignore
-        return await window.axe.run(document, {
+        const axeWindow = window as Window & { axe: { run: (context: Document, options: object) => Promise<{ violations: Array<{ impact?: string | null }> }> } }
+        return await axeWindow.axe.run(document, {
           runOnly: {
             type: 'tag',
             values: ['wcag2a', 'wcag2aa'],

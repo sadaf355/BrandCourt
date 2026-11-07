@@ -1,4 +1,4 @@
-"""Phase 8–10: guideline health, precedent ledger, fix verification and insights."""
+"""Guideline health, precedent ledger and fix verification APIs."""
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 import hashlib

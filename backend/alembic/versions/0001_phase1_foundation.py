@@ -14,6 +14,11 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # pgvector must exist before later migrations add VECTOR columns. Keep this
+    # in the foundation migration so a clean PostgreSQL upgrade is ordered.
+    if op.get_bind().dialect.name == "postgresql":
+        op.execute("CREATE EXTENSION IF NOT EXISTS vector")
+
     op.create_table(
         "app_metadata",
         sa.Column("key", sa.String(length=100), primary_key=True),

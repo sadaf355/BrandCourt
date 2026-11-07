@@ -4,8 +4,6 @@ import {
   ContentRevision,
   ClaimFinding,
   ReviewJob,
-  Rule,
-  Fact,
   BrandAsset,
   AuditEvent,
   FindingDecision,
@@ -39,7 +37,7 @@ let mockUser: User = {
   role: 'creator',
 }
 
-let mockContentItems: ContentItem[] = [
+const mockContentItems: ContentItem[] = [
   {
     id: 'cnt-glowserum-1',
     workspace_id: 'ws-aurora-7',
@@ -54,7 +52,7 @@ let mockContentItems: ContentItem[] = [
   },
 ]
 
-let mockRevisions: Record<string, ContentRevision[]> = {
+const mockRevisions: Record<string, ContentRevision[]> = {
   'cnt-glowserum-1': [
     {
       id: 'rev-1',
@@ -75,7 +73,7 @@ let mockRevisions: Record<string, ContentRevision[]> = {
   ],
 }
 
-let mockFindings: Record<string, ClaimFinding[]> = {
+const mockFindings: Record<string, ClaimFinding[]> = {
   'cnt-glowserum-1': [
     {
       id: 'fnd-1',
@@ -197,7 +195,7 @@ let mockFindings: Record<string, ClaimFinding[]> = {
   ],
 }
 
-let mockJobs: Record<string, ReviewJob> = {}
+const mockJobs: Record<string, ReviewJob> = {}
 
 // ── B3 seed data ─────────────────────────────────────────────────────────────
 
@@ -424,7 +422,7 @@ const mockPrecedents: PrecedentItem[] = [
   },
 ]
 
-let mockGuidelineHealthIssues: any[] = [
+const mockGuidelineHealthIssues: any[] = [
   {
     type: 'possible_conflict',
     severity: 'major',
@@ -999,7 +997,7 @@ export const mockService = {
       expiring_facts_count: 1,
       average_approval_hours: 3.8,
       average_review_rounds: 1.5,
-      model_mode: mockLocalModelEnabled ? 'local' : 'deterministic',
+      model_mode: mockLocalModelEnabled ? 'ollama' : 'deterministic',
       is_seeded_reference: false,
     }
   },
@@ -1265,7 +1263,6 @@ export const mockService = {
   promotePrecedent: async (
     id: string
   ): Promise<{ precedent_id: string; rule_id: string; code: string; message: string }> => {
-    const p = mockPrecedents.find((x) => x.id === id)
     const code = `PREC-${(id || '0000').slice(0, 8).toUpperCase()}`
     return {
       precedent_id: id,
@@ -1317,18 +1314,25 @@ export const mockService = {
           status: 'active',
         },
         {
-          name: 'Sentence-Transformers All-MiniLM-L6-v2',
-          provider: 'local_embeddings',
-          purpose: 'Semantic guideline & precedent similarity retrieval',
+          name: 'Hashing Trigram Retrieval',
+          provider: 'local',
+          purpose: 'Lexical and local hashing-vector retrieval for rules and precedents',
           is_local: true,
           status: 'active',
         },
         {
-          name: 'Ollama / Llama-3-8B-Instruct',
-          provider: 'ollama_local',
-          purpose: 'Complex ambiguity analysis (masked payload only)',
+          name: 'Ollama / llama3.2:3b',
+          provider: 'ollama',
+          purpose: 'Optional masked ambiguity adjudication and NLI',
           is_local: true,
-          status: mockLocalModelEnabled ? 'ready' : 'disabled',
+          status: mockLocalModelEnabled ? 'configured' : 'disabled',
+        },
+        {
+          name: 'Ollama Embeddings / nomic-embed-text',
+          provider: 'ollama',
+          purpose: 'Optional local embeddings for semantic retrieval',
+          is_local: true,
+          status: mockLocalModelEnabled ? 'configured' : 'disabled',
         },
       ],
       data_flow_log: [
@@ -1374,7 +1378,7 @@ export const mockService = {
     mockLocalModelEnabled = data.local_model_enabled
     return {
       local_model_enabled: mockLocalModelEnabled,
-      message: `Model configuration updated. Local mode is now ${mockLocalModelEnabled ? 'enabled' : 'disabled'}.`,
+      message: `Workspace analysis mode changed to ${mockLocalModelEnabled ? 'ollama' : 'deterministic'}.`,
     }
   },
 }

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from uuid import uuid4
-from sqlalchemy import String, Text, DateTime, ForeignKey, Integer, Boolean, JSON, UniqueConstraint, false
+from sqlalchemy import String, Text, DateTime, ForeignKey, Integer, Boolean, JSON, UniqueConstraint, false, text
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column, validates
 from app.db.base import Base
@@ -22,7 +22,7 @@ class Workspace(Base):
     __tablename__ = 'workspaces'
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
-    settings: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    settings: Mapped[dict] = mapped_column(JSON, default=dict, server_default=text("'{}'"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
 class User(Base):

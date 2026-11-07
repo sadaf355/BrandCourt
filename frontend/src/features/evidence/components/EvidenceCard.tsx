@@ -1,5 +1,5 @@
 import React from 'react'
-import { FileText, BookOpen, ShieldCheck, ExternalLink, Calendar, Layers } from 'lucide-react'
+import { FileText, BookOpen, ShieldCheck, ExternalLink, Calendar } from 'lucide-react'
 import { EvidenceItem } from '../../../types/api'
 
 interface EvidenceCardProps {

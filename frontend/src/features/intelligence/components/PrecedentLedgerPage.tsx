@@ -6,13 +6,10 @@ import {
   ArrowUpRight,
   Plus,
   Clock,
-  Sparkles,
-  ShieldAlert,
 } from 'lucide-react'
 import { apiClient } from '../../../lib/api'
 import { useToast } from '../../../components/common/Toast'
 import { Skeleton, ErrorState, EmptyState } from '../../../components/common/FeedbackStates'
-import { PrecedentItem } from '../../../types/api'
 
 export function PrecedentLedgerPage() {
   const { showToast } = useToast()

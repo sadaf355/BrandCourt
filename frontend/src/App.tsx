@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useNavigate, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { ShieldCheck } from 'lucide-react'
 import { ThemeProvider } from './providers/ThemeProvider'
 import { ToastProvider } from './components/common/Toast'

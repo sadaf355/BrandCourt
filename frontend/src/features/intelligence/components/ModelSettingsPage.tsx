@@ -1,16 +1,12 @@
-import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Cpu,
   ShieldCheck,
   ToggleLeft,
   ToggleRight,
-  Database,
-  Lock,
   Layers,
   Activity,
   CheckCircle2,
-  AlertCircle,
 } from 'lucide-react'
 import { apiClient } from '../../../lib/api'
 import { useToast } from '../../../components/common/Toast'
@@ -81,7 +77,7 @@ export function ModelSettingsPage() {
           Model Architecture & Privacy Controls
         </h1>
         <p className="text-sm text-slate-400">
-          Manage local model execution mode, review active pipeline stages, and inspect cryptographic data-flow masking logs.
+          Manage workspace model mode, review configured pipeline stages, and inspect audited data-flow metadata.
         </p>
       </div>
 
@@ -95,12 +91,12 @@ export function ModelSettingsPage() {
                 isLocalEnabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'
               }`}
             >
-              {isLocalEnabled ? 'Enabled (Air-Gapped Local)' : 'Standard (Hybrid Deterministic)'}
+              {isLocalEnabled ? 'Ollama enabled' : 'Deterministic mode'}
             </span>
           </div>
           <p className="text-xs text-slate-400 max-w-xl">
-            When enabled, all semantic ambiguity analysis and embeddings run strictly on self-hosted Ollama instances.
-            Zero payload leaves the local machine.
+            When enabled, BrandCourt uses the configured Ollama service for masked ambiguity analysis and embeddings.
+            Whether requests remain inside your network depends on where that Ollama service is hosted.
           </p>
         </div>
 
@@ -123,9 +119,9 @@ export function ModelSettingsPage() {
         <div className="space-y-1">
           <span className="font-semibold text-white">Non-Negotiable Data Privacy Rule:</span>
           <p className="leading-relaxed">
-            All secret brand terms and personally identifiable information (PII) are stripped or replaced with
-            deterministic placeholder tokens before any model is invoked. Every call is audited in the append-only{' '}
-            <code className="text-indigo-200">ai_calls</code> log.
+            BrandCourt masks configured secret terms and detected personal information before optional model calls.
+            Model/service call metadata is recorded in the <code className="text-indigo-200">ai_calls</code> log.
+            Review the masking policy and hosting location before enabling a model provider.
           </p>
         </div>
       </div>
@@ -164,7 +160,7 @@ export function ModelSettingsPage() {
                       className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase ${
                         m.status === 'active'
                           ? 'bg-emerald-500/10 text-emerald-400'
-                          : m.status === 'ready'
+                          : (m.status === 'ready' || m.status === 'configured')
                           ? 'bg-blue-500/10 text-blue-400'
                           : 'bg-slate-800 text-slate-500'
                       }`}
@@ -184,7 +180,7 @@ export function ModelSettingsPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-white flex items-center gap-2">
             <Activity size={16} className="text-indigo-400" />
-            Cryptographic Data-Flow Log (Last 20 Invocations)
+            Model / Service Data-Flow Log (Last 20 Invocations)
           </h2>
           <span className="text-xs text-slate-400 font-mono">Table: ai_calls</span>
         </div>
@@ -216,7 +212,7 @@ export function ModelSettingsPage() {
                     </span>
                   </td>
                   <td className="py-3 px-3 text-right font-mono text-slate-400">
-                    {log.duration_ms ? `${log.duration_ms} ms` : '12 ms'}
+                    {log.duration_ms != null ? `${log.duration_ms} ms` : '—'}
                   </td>
                 </tr>
               ))}

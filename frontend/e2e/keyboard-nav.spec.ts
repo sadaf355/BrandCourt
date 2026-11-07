@@ -14,7 +14,7 @@ test.describe('Keyboard-only navigation flow', () => {
 
     // Tab through the login form elements
     await page.keyboard.press('Tab')
-    let focusedTag = await page.evaluate(() => document.activeElement?.tagName)
+    const focusedTag = await page.evaluate(() => document.activeElement?.tagName)
     expect(focusedTag).toBeTruthy()
 
     // Tab to next input

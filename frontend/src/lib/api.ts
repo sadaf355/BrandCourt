@@ -120,6 +120,7 @@ export const apiClient = {
     caption?: string
     alt_text?: string
     is_ai_media?: boolean
+    paid_gifted?: boolean
   }): Promise<ContentItem> {
     if (USE_MOCK) return mockService.createContent(data)
     return api<ContentItem>('/content', {
@@ -133,6 +134,7 @@ export const apiClient = {
       caption: string
       alt_text?: string
       is_ai_media?: boolean
+      paid_gifted?: boolean
       title?: string
       channel?: ContentItem['channel']
       campaign?: string
@@ -144,60 +146,71 @@ export const apiClient = {
       body: JSON.stringify(data),
     })
   },
-  async startAnalysisJob(contentId: string): Promise<{ job_id: string; message: string }> {
+  async startAnalysisJob(contentId: string): Promise<{ job_id: string; status: string; progress: number; stage: string; content_id: string; revision_id: string; poll_url: string }> {
     if (USE_MOCK) {
       const jobId = await mockService.startAnalysisJob(contentId)
-      return { job_id: jobId, message: 'Analysis queued' }
+      return { job_id: jobId, status: 'queued', progress: 0, stage: 'queued', content_id: contentId, revision_id: '', poll_url: `/jobs/${jobId}` }
     }
-    return api<{ job_id: string; message: string }>(`/content/${contentId}/analyze`, {
+    return api<{ job_id: string; status: string; progress: number; stage: string; content_id: string; revision_id: string; poll_url: string }>(`/content/${contentId}/analyze`, {
       method: 'POST',
     })
   },
   async getJob(jobId: string): Promise<ReviewJob> {
     if (USE_MOCK) return mockService.getJob(jobId)
-    return api<ReviewJob>(`/jobs/${jobId}`)
+    return api<any>(`/jobs/${jobId}`).then(job => ({ ...job, id: job.job_id ?? job.id, job_type: job.job_type ?? 'content_analysis' }))
   },
   async submitFindingDecision(
     contentId: string,
     findingId: string,
-    action: 'accept' | 'dispute' | 'override' | 'resolve',
-    note?: string
+    action: 'accept' | 'edit' | 'dispute' | 'override' | 'resolve',
+    note?: string,
+    editedText?: string
   ): Promise<ClaimFinding> {
-    if (USE_MOCK) return mockService.submitFindingDecision(contentId, findingId, action, note)
-    return api<ClaimFinding>(`/findings/${findingId}/decisions`, {
+    if (USE_MOCK) return mockService.submitFindingDecision(contentId, findingId, action === 'edit' ? 'resolve' : action, note)
+    return api<ClaimFinding>(`/findings/${findingId}/decision`, {
       method: 'POST',
-      body: JSON.stringify({ action, note }),
+      body: JSON.stringify({ action, reason: note, edited_text: editedText }),
     })
   },
   async submitForReview(contentId: string): Promise<ContentItem> {
     if (USE_MOCK) return mockService.submitForReview(contentId)
-    return api<ContentItem>(`/content/${contentId}/submit`, {
+    await api(`/content/${contentId}/workflow`, {
       method: 'POST',
+      body: JSON.stringify({ action: 'submit' }),
     })
+    return api<ContentItem>(`/content/${contentId}`)
   },
   async startReview(contentId: string): Promise<ContentItem> {
     if (USE_MOCK) return mockService.startReview(contentId)
-    return api<ContentItem>(`/content/${contentId}/start-review`, {
+    await api(`/content/${contentId}/workflow`, {
       method: 'POST',
+      body: JSON.stringify({ action: 'start_review' }),
     })
+    return api<ContentItem>(`/content/${contentId}`)
   },
   async approveContent(contentId: string): Promise<ContentItem> {
     if (USE_MOCK) return mockService.approveContent(contentId)
-    return api<ContentItem>(`/content/${contentId}/approve`, {
+    await api(`/content/${contentId}/workflow`, {
       method: 'POST',
+      body: JSON.stringify({ action: 'approve' }),
     })
+    return api<ContentItem>(`/content/${contentId}`)
   },
   async rejectContent(contentId: string): Promise<ContentItem> {
     if (USE_MOCK) return mockService.rejectContent(contentId)
-    return api<ContentItem>(`/content/${contentId}/reject`, {
+    await api(`/content/${contentId}/workflow`, {
       method: 'POST',
+      body: JSON.stringify({ action: 'reject' }),
     })
+    return api<ContentItem>(`/content/${contentId}`)
   },
   async reopenContent(contentId: string): Promise<ContentItem> {
     if (USE_MOCK) return mockService.reopenContent(contentId)
-    return api<ContentItem>(`/content/${contentId}/reopen`, {
+    await api(`/content/${contentId}/workflow`, {
       method: 'POST',
+      body: JSON.stringify({ action: 'reopen' }),
     })
+    return api<ContentItem>(`/content/${contentId}`)
   },
 
   // ── B3: Review queue ───────────────────────────────────────────────────────
@@ -225,14 +238,12 @@ export const apiClient = {
   // ── B3: Approve / reject with reason ──────────────────────────────────────
   async approveContentWithReason(contentId: string): Promise<ApprovalResult> {
     if (USE_MOCK) return mockService.approveContentWithReason(contentId)
-    return api<ApprovalResult>(`/content/${contentId}/approve`, { method: 'POST' })
+    return api<ApprovalResult>(`/content/${contentId}/workflow`, { method: 'POST', body: JSON.stringify({ action: 'approve' }) })
   },
   async rejectContentWithReason(contentId: string, reason: string): Promise<ContentItem> {
     if (USE_MOCK) return mockService.rejectContentWithReason(contentId, reason)
-    return api<ContentItem>(`/content/${contentId}/reject`, {
-      method: 'POST',
-      body: JSON.stringify({ reason }),
-    })
+    await api(`/content/${contentId}/workflow`, { method: 'POST', body: JSON.stringify({ action: 'reject', reason }) })
+    return api<ContentItem>(`/content/${contentId}`)
   },
   async overrideFinding(
     contentId: string,
@@ -240,16 +251,13 @@ export const apiClient = {
     reason: string
   ): Promise<ClaimFinding> {
     if (USE_MOCK) return mockService.overrideFinding(contentId, findingId, reason)
-    return api<ClaimFinding>(`/findings/${findingId}/decisions`, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'override', note: reason }),
-    })
+    return api<ClaimFinding>(`/findings/${findingId}/decision`, { method: 'POST', body: JSON.stringify({ action: 'override', reason }) })
   },
 
   // ── B3: Comments ──────────────────────────────────────────────────────────
   async listComments(contentId: string, findingId?: string): Promise<Comment[]> {
     if (USE_MOCK) return mockService.listComments(contentId, findingId)
-    const q = findingId ? `?finding_id=${findingId}` : ''
+    const q = findingId ? `?finding_id=${encodeURIComponent(findingId)}` : ''
     return api<Comment[]>(`/content/${contentId}/comments${q}`)
   },
   async addComment(
@@ -261,14 +269,12 @@ export const apiClient = {
     if (USE_MOCK) return mockService.addComment(contentId, body, findingId, parentId)
     return api<Comment>(`/content/${contentId}/comments`, {
       method: 'POST',
-      body: JSON.stringify({ body, finding_id: findingId, parent_id: parentId }),
+      body: JSON.stringify({ body, finding_id: findingId }),
     })
   },
   async resolveComment(contentId: string, commentId: string): Promise<Comment> {
     if (USE_MOCK) return mockService.resolveComment(contentId, commentId)
-    return api<Comment>(`/content/${contentId}/comments/${commentId}/resolve`, {
-      method: 'POST',
-    })
+    throw new Error('Comment resolution is not exposed by the published API contract.')
   },
 
   // ── B3: Notifications ─────────────────────────────────────────────────────
@@ -280,34 +286,23 @@ export const apiClient = {
   // ── B3: Members ───────────────────────────────────────────────────────────
   async listMembers(): Promise<WorkspaceMember[]> {
     if (USE_MOCK) return mockService.listMembers()
-    return api<WorkspaceMember[]>('/workspace/members')
+    return api<WorkspaceMember[]>('/users')
   },
   async inviteMember(email: string, role: Role): Promise<WorkspaceMember> {
     if (USE_MOCK) return mockService.inviteMember(email, role)
-    return api<WorkspaceMember>('/workspace/members', {
-      method: 'POST',
-      body: JSON.stringify({ email, role }),
-    })
+    throw new Error('The API contract has user creation, not email invitations. Create a user with full_name, email, password and role.')
   },
   async changeMemberRole(userId: string, role: Role): Promise<WorkspaceMember> {
     if (USE_MOCK) return mockService.changeMemberRole(userId, role)
-    return api<WorkspaceMember>(`/workspace/members/${userId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ role }),
-    })
+    return api<WorkspaceMember>(`/users/${userId}/role?role=${encodeURIComponent(role)}`, { method: 'PATCH' })
   },
   async deactivateMember(userId: string): Promise<WorkspaceMember> {
     if (USE_MOCK) return mockService.deactivateMember(userId)
-    return api<WorkspaceMember>(`/workspace/members/${userId}/deactivate`, {
-      method: 'POST',
-    })
+    throw new Error('Member deactivation is not exposed by the published API contract.')
   },
   async deleteWorkspaceData(reason: string): Promise<{ audit_event_id: string }> {
     if (USE_MOCK) return mockService.deleteWorkspaceData(reason)
-    return api<{ audit_event_id: string }>('/workspace/delete', {
-      method: 'POST',
-      body: JSON.stringify({ reason }),
-    })
+    throw new Error('Workspace deletion is not exposed by the published API contract.')
   },
 
   // ── B3: Rules ─────────────────────────────────────────────────────────────
@@ -316,10 +311,8 @@ export const apiClient = {
     is_india_pack?: boolean
   }): Promise<RuleWithHistory[]> {
     if (USE_MOCK) return mockService.listRules(params)
-    const q = new URLSearchParams()
-    if (params?.status) q.set('status', params.status)
-    if (params?.is_india_pack != null) q.set('is_india_pack', String(params.is_india_pack))
-    return api<RuleWithHistory[]>(`/rules?${q}`)
+    const query = params?.status ? `?status=${encodeURIComponent(params.status)}` : ''
+    return api<RuleWithHistory[]>(`/rules${query}`)
   },
   async updateRule(
     ruleId: string,
@@ -348,7 +341,7 @@ export const apiClient = {
     if (USE_MOCK) return mockService.createFact(data)
     return api<FactWithHistory>('/facts', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ statement: data.statement, value: data.claim_value ?? '', unit: data.unit, source_ref: data.source_reference, valid_from: data.valid_from, valid_to: data.valid_until }),
     })
   },
 
@@ -361,7 +354,7 @@ export const apiClient = {
     if (USE_MOCK) return mockService.upsertAsset(name, assetType, contentJson)
     return api<BrandAsset>('/assets', {
       method: 'POST',
-      body: JSON.stringify({ name, asset_type: assetType, content_json: contentJson }),
+      body: JSON.stringify({ name, kind: assetType, data: contentJson }),
     })
   },
 
@@ -370,7 +363,7 @@ export const apiClient = {
     if (USE_MOCK) return mockService.uploadGuideline(file)
     const form = new FormData()
     form.append('file', file)
-    return api<GuidelineUploadResult>('/guidelines/upload', {
+    return api<GuidelineUploadResult>('/guidelines', {
       method: 'POST',
       body: form,
     })
@@ -387,7 +380,7 @@ export const apiClient = {
     if (params?.scope) q.set('scope', params.scope)
     if (params?.limit != null) q.set('limit', String(params.limit))
     if (params?.offset != null) q.set('offset', String(params.offset))
-    return api<{ events: AuditEvent[]; total: number }>(`/audit?${q}`)
+    return api<AuditEvent[]>(`/audit-events${params?.limit ? `?limit=${params.limit}` : ''}`).then(events => ({ events, total: events.length }))
   },
 
   // ── B4: Insights & Analytics ──────────────────────────────────────────────
@@ -411,12 +404,12 @@ export const apiClient = {
   // ── B4: Reports ───────────────────────────────────────────────────────────
   async downloadReportJson(contentId: string): Promise<ComplianceReport> {
     if (USE_MOCK) return mockService.downloadReportJson(contentId)
-    return api<ComplianceReport>(`/reports/content/${contentId}/json`)
+    return api<ComplianceReport>(`/content/${contentId}/report?format=json`)
   },
   async downloadReportPdf(contentId: string): Promise<Blob> {
     if (USE_MOCK) return mockService.downloadReportPdf(contentId)
-    const res = await fetch(`${API_BASE}/reports/content/${contentId}/pdf`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('brandcourt_token') || ''}` },
+    const res = await fetch(`${API_BASE}/content/${contentId}/report?format=pdf`, {
+      headers: { Authorization: `Bearer ${getToken() || ''}` },
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: 'Failed to download PDF' }))
@@ -473,9 +466,6 @@ export const apiClient = {
   },
   async updateModelSettings(data: { local_model_enabled: boolean; default_model?: string }): Promise<{ local_model_enabled: boolean; message: string }> {
     if (USE_MOCK) return mockService.updateModelSettings(data)
-    return api<{ local_model_enabled: boolean; message: string }>('/settings/models', {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    })
+    return api<{ local_model_enabled: boolean; default_model: string; message: string }>('/settings/models', { method: 'PATCH', body: JSON.stringify(data) })
   },
 }

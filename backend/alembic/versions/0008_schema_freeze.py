@@ -36,9 +36,14 @@ def _add_columns(table, columns):
 
 
 def _create_table_if_missing(name, *columns, indexes=()):
-    if name not in inspect(op.get_bind()).get_table_names():
+    inspector = inspect(op.get_bind())
+    if name not in inspector.get_table_names():
         op.create_table(name, *columns)
-        for index_name, index_columns in indexes:
+        existing_indexes: set[str] = set()
+    else:
+        existing_indexes = {index["name"] for index in inspector.get_indexes(name)}
+    for index_name, index_columns in indexes:
+        if index_name not in existing_indexes:
             op.create_index(index_name, name, index_columns)
 
 
@@ -95,9 +100,6 @@ def _create_audit_triggers():
 
 def upgrade() -> None:
     bind = op.get_bind()
-    if bind.dialect.name == "postgresql":
-        op.execute("CREATE EXTENSION IF NOT EXISTS vector")
-
     _add_columns(
         "workspaces",
         [

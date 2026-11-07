@@ -256,6 +256,8 @@ async def _perform_analysis(db, user, item, revision, job=None):
         logo_data = (logo_asset.data or {}) if logo_asset else {}
         logo_key = logo_data.get('storage_key') if isinstance(logo_data, dict) else None
         try:
+            # analyze_image performs Tesseract OCR and OpenCV work synchronously;
+            # keep the entire image pipeline off the event loop.
             image_result = await asyncio.to_thread(
                 _analyze_stored_image, get_storage(), revision.creative_storage_key, palette,
                 logo_key if isinstance(logo_key, str) else None,

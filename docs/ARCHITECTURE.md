@@ -1,78 +1,36 @@
-# BrandCourt System Architecture
+# BrandCourt architecture
 
-BrandCourt is engineered as a secure, role-governed compliance verification platform for enterprise marketing and regulated product claims.
+BrandCourt is a multi-workspace application for governing brand knowledge, checking campaign content against approved evidence, and recording human review decisions.
 
-```
-+-----------------------------------------------------------------------+
-|                            Frontend Layer                             |
-|  React 19 + TypeScript + Vite + TailwindCSS + Recharts + Playwright   |
-+-----------------------------------------------------------------------+
-                                  |  REST / JWT Auth
-+-----------------------------------------------------------------------+
-|                            API & Gateway                              |
-|          FastAPI + Pydantic v2 + Dependency-injected RBAC             |
-+-----------------------------------------------------------------------+
-                                  |
-    +-----------------------------+-----------------------------+
-    |                             |                             |
-+-------------------+   +--------------------+   +----------------------+
-| Layer 1: Rules    |   | Layer 2: Semantics |   | Layer 3: LLM Judge   |
-| Deterministic     |   | Vector Embeddings  |   | Ollama / Llama-3     |
-| Regex + ASCI Pack |   | sentence-transf.   |   | Masked PII only      |
-+-------------------+   +--------------------+   +----------------------+
-                                  |
-+-----------------------------------------------------------------------+
-|                        Data Persistence Layer                         |
-|   PostgreSQL / SQLite + SQLAlchemy 2.0 (Async) + Alembic Migrations  |
-+-----------------------------------------------------------------------+
-```
+## Runtime components
 
----
+- **Web client:** React 19, TypeScript, Vite, React Router and a custom CSS design system.
+- **API:** FastAPI, Pydantic Settings and SQLAlchemy's asynchronous ORM.
+- **Database:** PostgreSQL (including Neon) for deployment; SQLite is supported for local development and tests. Alembic owns schema migrations. PostgreSQL deployments use pgvector for vector columns.
+- **Object storage:** local filesystem for development or S3-compatible storage for durable deployments.
+- **Background processing:** an optional asyncio review-job worker runs in the API process when `JOB_WORKER_ENABLED=true`. Database leases coordinate job claims.
+- **Analysis:** deterministic checks are the baseline. Retrieval uses local hashing/trigram vectors by default; Ollama embeddings and NLI are optional. Model output is schema-validated and evidence quotes are checked against stored facts.
+- **Image text:** Tesseract OCR is optional and requires the system executable.
 
-## 1. 3-Layer Claim Court Engine
+## Request and review flow
 
-1. **Layer 1: Deterministic Engine**
-   - High-throughput regex, unit conversions (e.g., SPF, %, ml), and regulatory pattern rules (e.g., ASCI guidelines).
-   - Fast-fails obvious claim non-compliances before calling external services.
+1. The browser authenticates against the API and sends a bearer token with workspace-scoped requests.
+2. The API checks role permissions and workspace ownership before reading or changing data.
+3. Guideline and approved-fact records provide the governed evidence used by Claim Court.
+4. Content revisions are analyzed with deterministic checks first. Optional retrieval/model steps can add context but must not silently replace deterministic findings.
+5. Findings retain evidence and method metadata. Uncertain or unavailable model results remain subject to human review.
+6. Review decisions, approvals and changes are recorded in the audit trail. Approved revisions are snapshotted and locked until an authorized reopen action.
 
-2. **Layer 2: Semantic Retrieval**
-   - Employs `sentence-transformers/all-MiniLM-L6-v2` embeddings for semantic guideline retrieval and precedent matching.
-   - Computes cosine similarity against the company's active rule database and approved historical precedents.
+## Deployment topology
 
-3. **Layer 3: Ambiguity Analysis & Fix Proposal**
-   - Calls local LLMs (e.g., `Llama-3-8B-Instruct` via Ollama) or hosted models strictly over **pre-masked payloads**.
-   - Assesses edge-case phrasing, checks intent preservation, and generates conservative compliant fixes.
+The supported production topology is a Vercel-hosted static frontend and a persistent FastAPI container connected to Neon PostgreSQL and private S3-compatible object storage. The API container applies Alembic migrations before Uvicorn starts. Set exact frontend origins in `CORS_ORIGINS`; do not use wildcard origins with credentialed requests.
 
----
+For local development, `docker compose up --build` starts PostgreSQL, the API, the web container, and a fact-expiry scheduler. The API's review worker is enabled by default in Compose. In production, run one Uvicorn process per API container when the in-process worker is enabled; scale with additional containers and database-backed job leases.
 
-## 2. Privacy & Masking Architecture
+## Security boundaries
 
-BrandCourt enforces an air-gapped privacy boundary on all text processed by language models:
-- **Pre-masking Pipeline**: PII, unpublished SKU names, proprietary formulas, and designated brand secrets are tokenized (e.g., `[SECRET_FORMULA_1]`) prior to model ingestion.
-- **AI Audit Trail (`ai_calls` table)**:
-  - Every call stores: `provider`, `model`, `purpose`, `input_chars`, `masked_entities`, `masking_confirmed`, and `duration_ms`.
-  - Stored records are surfaced transparently in the **Model Settings** log and compiled into the final **Compliance PDF/JSON Report**.
-
----
-
-## 3. Data Model & Role-Based Governance
-
-- **Multi-Tenancy**: Every entity (`ContentItem`, `Rule`, `Fact`, `Precedent`) enforces strict foreign-key partitioning by `workspace_id`.
-- **Revision Locking**:
-  - `ContentRevision.locked_at`: Sets an immutable timestamp upon approval.
-  - `ContentRevision.approved_snapshot`: Preserves a frozen JSON copy of the content and all resolved findings.
-- **Role Hierarchy**:
-  - `creator` < `reviewer` < `manager` < `admin`
-  - High-impact India-pack rules (`IN-*`) and final content approvals are gated to `manager` or `admin` roles.
-  - Model privacy configuration is restricted strictly to `admin`.
-
----
-
-## 4. Reporting Pipeline
-
-- **Stateless PDF Generation**:
-  - Built using a zero-dependency, pure-Python PDF/1.4 binary generator (`backend/app/services/reports.py`).
-  - Guarantees zero C-library or external webkit dependencies.
-- **Integrity Gating**:
-  - Downloads are strictly blocked unless the revision status is `approved` and `locked_at` is non-null.
-
+- Every workspace-owned record is queried within its workspace context.
+- Role checks are enforced by API dependencies, not only by frontend visibility.
+- Uploaded files use validated storage keys; production files belong in private object storage.
+- Secrets are read from environment variables and must not be committed or exposed as `VITE_*` values.
+- Claim Court findings are decision-support signals, not legal advice or a guarantee of factual truth.

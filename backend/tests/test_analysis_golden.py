@@ -140,7 +140,7 @@ def test_all_glowserum_seed_posts_run_through_durable_worker(
         for line in GLOWSERUM_DATA.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
-    assert len(posts) == 40
+    assert len(posts) == 52
 
     asyncio.run(
         seed_glowserum(
@@ -233,7 +233,7 @@ def test_all_glowserum_seed_posts_run_through_durable_worker(
             }
 
     jobs = asyncio.run(load_results())
-    assert len(jobs) == 40
+    assert len(jobs) == len(posts)
     expected_by_id = {post["id"]: set(post["expected_findings"]) for post in posts}
     measured_predictions = []
     for post_id, job_id in job_ids.items():

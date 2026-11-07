@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,9 +20,22 @@ import app.models.entities  # Register ORM models before migrations/tests
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    yield
-    if engine is not None:
-        await engine.dispose()
+    worker_task: asyncio.Task[None] | None = None
+    if settings.job_worker_enabled:
+        from app.core.job_worker import worker_loop
+
+        worker_task = asyncio.create_task(worker_loop(), name="brandcourt-review-worker")
+    try:
+        yield
+    finally:
+        if worker_task is not None:
+            worker_task.cancel()
+            try:
+                await worker_task
+            except asyncio.CancelledError:
+                pass
+        if engine is not None:
+            await engine.dispose()
 
 
 app = FastAPI(

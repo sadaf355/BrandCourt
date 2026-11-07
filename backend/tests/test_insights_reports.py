@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 
 from app.models.entities import (
+    Workspace,
     ContentItem,
     ContentRevision,
     ClaimFinding,
@@ -174,7 +175,7 @@ def test_report_succeeds_for_approved_locked_content_with_pdf():
 def test_insights_summary_counts():
     user = MockUser("u1", "ws1", "manager")
     db = MockDB(
-        scalar_returns=[5, 3, 8],  # total_items, approved_items, total_findings
+        scalar_returns=[Workspace(id="ws1", name="WS", settings={}), 5, 3, 8],  # workspace, total_items, approved_items, total_findings
         scalars_returns=[
             ["critical", "major", "advisory"],  # findings severity
             ["override", "override", "dispute"],  # decisions
@@ -195,7 +196,7 @@ def test_insights_summary_counts():
 def test_model_settings_admin_only():
     manager = MockUser("u1", "ws1", "manager")
     admin = MockUser("u2", "ws1", "admin")
-    db = MockDB()
+    db = MockDB(scalar_returns=[Workspace(id="ws1", name="WS", settings={})])
 
     body = ModelSettingsUpdate(local_model_enabled=True)
 

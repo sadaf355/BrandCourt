@@ -9,7 +9,7 @@
  */
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { History, Shield, Filter, Search } from 'lucide-react'
+import { History, Search } from 'lucide-react'
 import { apiClient } from '../../../lib/api'
 import { AuditTimeline } from '../../reviews/components/AuditTimeline'
 import { EmptyState, ErrorState } from '../../../components/common/FeedbackStates'

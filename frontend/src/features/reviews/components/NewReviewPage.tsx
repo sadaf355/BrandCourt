@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useNavigate } from 'react-router-dom'
-import { Upload, Sparkles, AlertTriangle, FileText, ArrowLeft, Image as ImageIcon } from 'lucide-react'
+import { Upload, AlertTriangle, ArrowLeft } from 'lucide-react'
 import { Channel } from '../../../types/api'
 import { apiClient } from '../../../lib/api'
 import { useToast } from '../../../components/common/Toast'
@@ -33,7 +33,6 @@ export function NewReviewPage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [creativePreview, setCreativePreview] = useState<string | null>(null)
-  const [creativeFile, setCreativeFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const {
@@ -64,7 +63,6 @@ export function NewReviewPage() {
   const handleCreativeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      setCreativeFile(file)
       const reader = new FileReader()
       reader.onloadend = () => {
         setCreativePreview(reader.result as string)
@@ -83,6 +81,7 @@ export function NewReviewPage() {
         caption: data.caption,
         alt_text: data.alt_text,
         is_ai_media: data.is_ai_media,
+        paid_gifted: data.is_paid_gifted,
       })
 
       showToast('Review created successfully! Redirecting to Claim Court workbench...', 'success')

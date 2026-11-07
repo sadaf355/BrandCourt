@@ -4,7 +4,7 @@
 
 The following measurements came from
 `pytest -s tests/test_analysis_golden.py::test_all_glowserum_seed_posts_run_through_durable_worker -q`
-on the 40-row fictional GlowSerum sample. The test asserted exact equality between expected
+on the original 40-row fictional GlowSerum sample (historical run). The test asserted exact equality between expected
 and observed finding labels for every row. It includes 10 clean posts and covers English,
 Hindi, Marathi, Hinglish, missing alt text, palette, contrast, logo, and an uncertain-OCR
 fixture tag.
@@ -62,7 +62,7 @@ persisted with the queued job, so a worker restart does not lose the setting:
 - `full_pipeline`: the complete worker path, including Ollama extraction/embeddings/NLI,
   image/OCR checks, and tone analysis.
 
-Run each variant separately against the same seeded 40 posts from `backend/`:
+Run each variant separately against the same seeded 52 posts from `backend/`:
 
 ```powershell
 python scripts/evaluate_api.py --variant code_rules_only --token <admin-token>
@@ -72,7 +72,7 @@ python scripts/score_eval.py --code-only ..\data\sample\glowserum_code_rules_onl
 ```
 
 The runner records the same source-file SHA-256 on all case rows, validates that the worker
-completed the requested variant, and captures all 40 expected case IDs. It measures worker
+completed the requested variant, and captures all 52 expected case IDs. It measures worker
 `started_at` to `finished_at`; failed jobs are recorded explicitly and score as empty predictions
 (thus contributing false negatives), never as successful passes. Model-dependent runs first
 verify that the configured Ollama model is live; a failed check marks that variant blocked and
@@ -141,3 +141,55 @@ inside the notification window but not expired receive one `fact_expiring_soon` 
 Repeated passes do not duplicate either notice. Docker was unavailable during this sprint, so
 the Compose service configuration was parsed but container startup and cron execution were not
 observed.
+
+
+## Expanded multilingual and uncertainty set (52 cases)
+
+The current `data/sample/glowserum_40_posts.jsonl` retains its historical filename for
+backward compatibility but now contains 52 labelled cases. Twelve additional synthetic
+cases cover Hindi, Marathi, Hinglish, paid disclosure, AI declaration, missing alt text,
+contrast uncertainty, OCR uncertainty, and clean controls. The new rows are not included
+in the historical 40-case measurements above. Re-run all three variants against this
+52-row dataset before publishing new comparative metrics. The scorer requires exact
+coverage and a shared SHA-256, so old 40-row prediction files cannot be mixed with this set.
+
+## Provider choice and forced-quote safeguard
+
+The selected evaluation provider is **Ollama** for local model inference. The configured
+default model path uses `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, and
+`OLLAMA_EMBEDDING_MODEL`; the API and evaluator must point to the same Ollama instance.
+The deterministic rules remain the fallback. Model adjudication is accepted only when
+its quoted evidence is an exact substring of the stored fact after restoring masked
+tokens, and the fact identifier matches the retrieved fact. Invalid or unsupported
+quotes are discarded and routed to human review. This safeguard is covered by
+`tests/test_checking_engine.py`; no hosted provider is selected by default.
+
+## Round 3 proof-case test plan
+
+The following proof cases are specified as repeatable acceptance scenarios, not claimed
+as live measured outcomes:
+
+1. **Guideline Health conflict:** add two active rules for the same channel whose
+   requirements conflict (for example, "never use exclamation marks" and "use an
+   exclamation mark in every headline"). Run Guideline Health; verify the pair is
+   surfaced with both rule IDs and suggested wording. A human owner decides whether
+   to edit or retire either rule.
+2. **Precedent removes a repeated false flag:** create a false-positive finding, dispute
+   it with a reason, save a scoped precedent for the same rule/channel, obtain manager
+   approval, then repeat the content. Verify the precedent is shown as advisory evidence
+   and the finding is no longer treated as a fresh unsupported error. The precedent must
+   not silently change the underlying rule.
+3. **Rejected fix:** propose a fix that removes the risky claim but also removes the
+   required product identity or key claim intent. Run the full verification engine;
+   assert the new Critical finding blocks acceptance and the Intent Preserved count
+   decreases. Keep the original revision unchanged.
+
+## Current execution status
+
+The original deterministic 40-case run and the 40-case code-only ablation above are
+historical recorded results. The retrieval+NLI and full-pipeline runs remain blocked
+until the configured Ollama service and both configured models are available. The
+expanded 52-case set has not yet been run through the API. Do not infer or extrapolate
+precision/recall for the new cases from historical results. Generate fresh outputs for
+all three variants and use `score_eval.py` to replace the results only after all three
+complete against the identical 52-case dataset hash.

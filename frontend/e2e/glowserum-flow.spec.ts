@@ -33,14 +33,6 @@ async function signUpAndSignIn(
   return { email, password }
 }
 
-async function login(page: Page, email: string, password: string) {
-  await page.goto('/login')
-  await page.getByLabel(/email/i).fill(email)
-  await page.getByLabel(/password/i).fill(password)
-  await page.getByRole('button', { name: /sign in|log in/i }).click()
-  await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 })
-}
-
 // Tests ------------------------------------------------------------------
 
 test.describe('GlowSerum full compliance flow', () => {

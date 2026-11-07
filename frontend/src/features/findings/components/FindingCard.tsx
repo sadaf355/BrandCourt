@@ -1,18 +1,15 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import {
   Check,
   Edit2,
   HelpCircle,
-  ShieldCheck,
-  ShieldAlert,
   ChevronDown,
   ChevronUp,
   Sparkles,
-  ArrowRight,
   History,
   Lock,
 } from 'lucide-react'
-import { ClaimFinding, FindingDecision } from '../../../types/api'
+import { ClaimFinding } from '../../../types/api'
 import { SeverityBadge } from '../../../components/common/SeverityBadge'
 import { StatusBadge } from '../../../components/common/StatusBadge'
 

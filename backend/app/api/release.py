@@ -1,16 +1,25 @@
 """R4/R5 release APIs: image intelligence, reviewer queue, reports and model disclosures."""
+import asyncio
 from datetime import datetime, timezone
-from pathlib import Path
 import json
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy import select, desc
 from app.api.deps import DBSession, CurrentUser, write_audit
 from app.core.config import settings
+from app.core.storage import get_storage
 from app.models.entities import ContentItem, ContentRevision, ClaimFinding, Rule, BrandAsset, AICall, Report
 from app.services.image_intelligence import analyze_image
 
 router=APIRouter(tags=['image intelligence, reports and reviewer queue'])
+
+def _analyze_stored_creative(storage, creative_key: str, palette: list[str], logo_key: str | None):
+    """Materialize local/S3 assets and run synchronous OCR/OpenCV off-loop."""
+    with storage.materialize(creative_key) as image_path:
+        if logo_key:
+            with storage.materialize(logo_key) as logo_path:
+                return analyze_image(image_path, palette, logo_path)
+        return analyze_image(image_path, palette, None)
 REVIEW_ROLES={'reviewer','manager','admin'}
 MANAGER_ROLES={'manager','admin'}
 
@@ -110,8 +119,6 @@ async def image_analysis(content_id: str, user: CurrentUser, db: DBSession):
     if not item: raise HTTPException(404,'Content item not found.')
     rev=await db.scalar(select(ContentRevision).where(ContentRevision.content_id==item.id,ContentRevision.workspace_id==user.workspace_id,ContentRevision.version==item.current_revision))
     if not rev or not rev.creative_storage_key: raise HTTPException(409,'Attach an image creative before image analysis.')
-    image_path=Path(settings.upload_dir)/rev.creative_storage_key
-    if not image_path.exists(): raise HTTPException(404,'Stored creative file is missing.')
     palette=[]
     assets=(await db.scalars(select(BrandAsset).where(BrandAsset.workspace_id==user.workspace_id,BrandAsset.kind=='palette'))).all()
     for asset in assets:
@@ -119,16 +126,21 @@ async def image_analysis(content_id: str, user: CurrentUser, db: DBSession):
         values=raw.get('colors',raw.get('palette',[]))
         if isinstance(values,dict): values=list(values.values())
         if isinstance(values,list): palette.extend(v for v in values if isinstance(v,str) and v.startswith('#'))
-    logo_ref=None
+    logo_key = None
     logo_assets=(await db.scalars(select(BrandAsset).where(BrandAsset.workspace_id==user.workspace_id,BrandAsset.kind=='logo'))).all()
     for asset in logo_assets:
-        candidate=(asset.data or {}).get('reference_image_path')
-        if candidate:
-            p=(Path(settings.upload_dir)/str(candidate)).resolve()
-            root=Path(settings.upload_dir).resolve()
-            if root in p.parents and p.is_file(): logo_ref=p; break
+        candidate=(asset.data or {}).get('storage_key')
+        if isinstance(candidate, str) and candidate:
+            logo_key = candidate
+            break
     try:
-        result=analyze_image(image_path,palette,logo_ref)
+        # Stored creatives are materialized through the configured backend so
+        # this endpoint works with both local and S3-compatible object storage.
+        # analyze_image performs synchronous Tesseract/OpenCV work, so run it
+        # in a worker thread and keep the API event loop responsive.
+        result = await asyncio.to_thread(
+            _analyze_stored_creative, get_storage(), rev.creative_storage_key, palette, logo_key
+        )
     except ImportError as exc:
         raise HTTPException(503,'Image analysis dependencies unavailable. Install Pillow and pytesseract and the Tesseract system engine.') from exc
     except Exception as exc:
