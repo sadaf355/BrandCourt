@@ -35,7 +35,7 @@ describe('apiClient API contract alignment', () => {
   it('uses the documented report endpoint for JSON and PDF', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse({ product: 'BrandCourt', findings: [], ai_and_service_disclosure: { calls: [] } }))
-      .mockResolvedValueOnce(new Response(new Blob(['%PDF-test']), { status: 200 }))
+      .mockResolvedValueOnce(new Response('%PDF-test', { status: 200, headers: { 'Content-Type': 'application/pdf' } }))
     vi.stubGlobal('fetch', fetchMock)
     await apiClient.downloadReportJson('content-1')
     await apiClient.downloadReportPdf('content-1')

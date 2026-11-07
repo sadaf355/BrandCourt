@@ -415,7 +415,12 @@ export const apiClient = {
       const err = await res.json().catch(() => ({ detail: 'Failed to download PDF' }))
       throw new Error(err.detail || 'Download failed')
     }
-    return res.blob()
+    try {
+      return await res.blob()
+    } catch {
+      const buffer = await res.arrayBuffer()
+      return new Blob([buffer], { type: 'application/pdf' })
+    }
   },
 
   // ── B4: Intelligence screens (Health, Precedents, Fix Verification, Models)
