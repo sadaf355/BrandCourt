@@ -3,6 +3,48 @@ The default hashing vectors are retrieval features, not pretrained semantic embe
 """
 from __future__ import annotations
 import hashlib, math, re, json
+from typing import Protocol
+
+
+class EmbeddingProvider(Protocol):
+    name: str
+    model: str
+
+    async def embed(self, texts: list[str]) -> dict:
+        """Return normalized vectors or an explicit failure status."""
+
+
+class HashingEmbeddingProvider:
+    name = "local"
+    model = "hashing-trigram-v1"
+
+    async def embed(self, texts: list[str]) -> dict:
+        return {
+            "status": "completed",
+            "model": self.model,
+            "embeddings": [embedding(text) for text in texts],
+        }
+
+
+class OllamaEmbeddingProvider:
+    name = "ollama"
+
+    def __init__(self, base_url: str, model: str):
+        self.base_url = base_url
+        self.model = model
+
+    async def embed(self, texts: list[str]) -> dict:
+        return await ollama_embeddings(texts, self.base_url, self.model)
+
+
+def embedding_provider_for(
+    model_mode: str,
+    base_url: str,
+    model: str,
+) -> EmbeddingProvider:
+    if model_mode.lower() == "ollama":
+        return OllamaEmbeddingProvider(base_url, model)
+    return HashingEmbeddingProvider()
 
 def embedding(text: str, dimensions: int=96) -> list[float]:
     tokens=re.findall(r"[a-z0-9]+",text.lower())

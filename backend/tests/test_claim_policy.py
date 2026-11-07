@@ -1,4 +1,8 @@
-from app.services.claim_policy import _claim_builtin_policy, _normalized_number_comparison
+from app.services.claim_policy import (
+    _claim_builtin_policy,
+    _normalized_number_comparison,
+    is_risky_claim,
+)
 
 
 def test_common_duration_units_are_normalized():
@@ -20,6 +24,11 @@ def test_cure_acne_claim_is_blocked_for_human_review():
     assert result and result[0] == 'unsupported' and result[1] == 'critical' and result[2] == 'IN-5'
 
 
+def test_harmless_acne_reference_is_not_a_risky_claim():
+    assert not is_risky_claim("Designed for acne-prone skin.")
+    assert is_risky_claim("Reduces acne.")
+
+
 def test_quantity_comparison_skips_unrelated_incompatible_quantity():
     assert _normalized_number_comparison('The 30 ml bottle keeps hydration for 28 days', '4', 'weeks') is True
     assert _normalized_number_comparison('The 30 ml bottle keeps hydration for 7 days', '4', 'weeks') is False
@@ -36,6 +45,29 @@ def test_approval_gate_blocks_risky_verdict_even_when_severity_is_warning():
     assert is_approval_blocker('contradicted', 'warning') is True
     assert is_approval_blocker('needs_human_review', 'warning') is True
     assert is_approval_blocker('supported', 'advisory') is False
+    assert is_approval_blocker('needs_human_review', 'advisory') is False
+    assert is_approval_blocker('supported', 'advisory', step_failed=True) is True
     assert decision_clears_approval_block('accept', [{'type':'policy_pack','code':'IN-2'}]) is False
     assert decision_clears_approval_block('resolve', [{'type':'policy_pack','code':'IN-2'}]) is True
     assert decision_clears_approval_block('override', []) is True
+
+
+def test_currency_values_compare_when_fact_unit_carries_currency():
+    from app.services.claim_policy import compare_claim_to_fact
+
+    assert compare_claim_to_fact("GlowSerum costs Rs 499", "499", "INR") is True
+    assert compare_claim_to_fact("GlowSerum costs Rs 599", "499", "INR") is False
+    assert compare_claim_to_fact("GlowSerum costs 599", "499", "INR") is None
+
+
+def test_date_only_fact_validity_end_is_inclusive():
+    from datetime import datetime, timezone
+    from app.services.claim_policy import fact_outside_validity_window
+
+    today = datetime(2026, 11, 6, 12, tzinfo=timezone.utc)
+    assert not fact_outside_validity_window(
+        None, datetime(2026, 11, 6, 0, tzinfo=timezone.utc), today
+    )
+    assert fact_outside_validity_window(
+        None, datetime(2026, 11, 5, 0, tzinfo=timezone.utc), today
+    )

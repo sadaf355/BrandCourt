@@ -1,13 +1,17 @@
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
+import asyncio
 import re
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from app.api.deps import DBSession, CurrentUser, write_audit
 from app.core.config import settings
+from app.core.guideline_files import extract_guideline_text
+from app.core.storage import get_storage
 from app.models.entities import GuidelineDoc, Rule, Fact, BrandAsset, AuditEvent
+from app.services.image_upload import reencode_image
 
 router = APIRouter(tags=['brand knowledge'])
 ADMIN_ROLES = {'admin'}
@@ -36,16 +40,17 @@ class RuleCreate(BaseModel):
     code: str | None = Field(default=None, max_length=80)
     title: str = Field(min_length=2, max_length=200)
     text: str = Field(min_length=3, max_length=10000)
-    type: str = Field(default='brand_voice', pattern='^(brand_voice|claim|visual|disclosure|terminology|legal|other)$')
-    severity: str = Field(default='warning', pattern='^(critical|warning|advisory)$')
+    type: str = Field(default='brand_voice', pattern='^(brand_voice|claim|visual|disclosure|terminology|legal|term|pattern|required_text|approved_spelling|alt_text|other)$')
+    severity: str = Field(default='major', pattern='^(critical|major|advisory)$')
     channels: list[str] = []
     source_ref: str | None = None
     document_id: str | None = None
+
 class RulePatch(BaseModel):
     title: str | None = Field(default=None, min_length=2, max_length=200)
     text: str | None = Field(default=None, min_length=3, max_length=10000)
-    type: str | None = Field(default=None, pattern='^(brand_voice|claim|visual|disclosure|terminology|legal|other)$')
-    severity: str | None = Field(default=None, pattern='^(critical|warning|advisory)$')
+    type: str | None = Field(default=None, pattern='^(brand_voice|claim|visual|disclosure|terminology|legal|term|pattern|required_text|approved_spelling|alt_text|other)$')
+    severity: str | None = Field(default=None, pattern='^(critical|major|advisory)$')
     channels: list[str] | None = None
     source_ref: str | None = None
 class FactCreate(BaseModel):
@@ -78,26 +83,15 @@ async def upload_guideline(user: CurrentUser, db: DBSession, file: UploadFile = 
     raw = await file.read()
     if not raw: raise HTTPException(400, 'The uploaded file is empty.')
     if len(raw) > 20 * 1024 * 1024: raise HTTPException(413, 'Guidelines must be 20 MB or smaller.')
-    text = ''
     try:
-        if suffix == '.txt': text = raw.decode('utf-8-sig', errors='replace')
-        elif suffix == '.pdf':
-            from pypdf import PdfReader
-            import io
-            text = '\n'.join(page.extract_text() or '' for page in PdfReader(io.BytesIO(raw)).pages)
-        else:
-            from docx import Document
-            import io
-            document = Document(io.BytesIO(raw))
-            text = '\n'.join(p.text for p in document.paragraphs)
-            for table in document.tables:
-                text += '\n' + '\n'.join(' | '.join(cell.text for cell in row.cells) for row in table.rows)
-    except Exception as exc:
-        raise HTTPException(422, f'Could not extract text from this file: {exc.__class__.__name__}. Try a text-based PDF or DOCX, or add rules manually.') from exc
-    folder = Path(settings.upload_dir) / user.workspace_id
-    folder.mkdir(parents=True, exist_ok=True)
+        text = extract_guideline_text(suffix, raw)
+    except ValueError as exc:
+        raise HTTPException(415, f'Guideline content is invalid for {suffix[1:].upper()}.') from exc
     storage_key = f'{user.workspace_id}/{uuid4().hex}{suffix}'
-    (Path(settings.upload_dir) / storage_key).write_bytes(raw)
+    try:
+        await asyncio.to_thread(get_storage().put_bytes, storage_key, raw, file.content_type or 'application/octet-stream')
+    except Exception as exc:
+        raise HTTPException(503, 'Guideline storage is unavailable.') from exc
     doc = GuidelineDoc(workspace_id=user.workspace_id, filename=filename, content_type=file.content_type or 'application/octet-stream', storage_key=storage_key, extracted_text=text, uploaded_by=user.id)
     db.add(doc); await db.flush()
     # Extraction is intentionally a proposal generator: no extracted rule is active without human confirmation.
@@ -113,7 +107,7 @@ async def upload_guideline(user: CurrentUser, db: DBSession, file: UploadFile = 
         code = slug_code(f'{Path(filename).stem}-{index}')
         while code in existing: code = slug_code(f'{code}-{uuid4().hex[:4]}')
         existing.append(code)
-        db.add(Rule(workspace_id=user.workspace_id, document_id=doc.id, code=code, title=(line[:90] + ('…' if len(line)>90 else '')), text=line, type='brand_voice', severity='warning', channels=[], status='draft', version=1, source_ref=filename, created_by=user.id))
+        db.add(Rule(workspace_id=user.workspace_id, document_id=doc.id, code=code, title=(line[:90] + ('…' if len(line)>90 else '')), text=line, type='brand_voice', severity='major', channels=[], status='draft', version=1, source_ref=filename, created_by=user.id))
     await write_audit(db, user, 'guideline.uploaded', {'document_id':doc.id,'filename':filename,'proposed_rules':len(unique),'extracted_characters':len(text)})
     await db.commit(); await db.refresh(doc)
     return {'id':doc.id,'filename':doc.filename,'extracted_characters':len(text),'proposed_rules':len(unique),'message':'Document processed. Every proposed rule remains a draft until a guideline owner confirms it.'}
@@ -211,15 +205,78 @@ async def list_assets(user: CurrentUser, db: DBSession):
 @router.post('/assets', status_code=201)
 async def create_asset(body: AssetCreate, user: CurrentUser, db: DBSession):
     ensure_role(user, ADMIN_ROLES)
+    if body.kind == 'logo':
+        raise HTTPException(422, 'Upload logo image bytes through POST /api/assets/logo.')
     item = BrandAsset(workspace_id=user.workspace_id, kind=body.kind, name=body.name.strip(), data=body.data, created_by=user.id)
     db.add(item); await db.flush(); await write_audit(db, user, 'asset.created', {'asset_id':item.id,'kind':item.kind,'name':item.name})
     await db.commit(); await db.refresh(item); return asset_view(item)
+
+@router.post('/assets/logo', status_code=201)
+async def upload_logo_asset(
+    user: CurrentUser,
+    db: DBSession,
+    name: str = Form(min_length=2, max_length=160),
+    file: UploadFile = File(...),
+):
+    ensure_role(user, ADMIN_ROLES)
+    filename = Path(file.filename or 'logo').name
+    suffix = Path(filename).suffix.lower()
+    if suffix not in {'.png', '.jpg', '.jpeg', '.webp', '.gif'}:
+        raise HTTPException(415, 'Supported logo formats: PNG, JPG, WEBP and GIF.')
+    raw = await file.read(10 * 1024 * 1024 + 1)
+    if not raw:
+        raise HTTPException(400, 'Logo image must not be empty.')
+    if len(raw) > 10 * 1024 * 1024:
+        raise HTTPException(413, 'Logo image must be no larger than 10 MB.')
+    try:
+        processed, thumbnail, width, height = reencode_image(raw, suffix)
+    except OverflowError as exc:
+        raise HTTPException(413, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(415, str(exc)) from exc
+    upload_id = uuid4().hex
+    original_key = f'{user.workspace_id}/brand-assets/{upload_id}.original{suffix}'
+    storage_key = f'{user.workspace_id}/brand-assets/{upload_id}.webp'
+    thumbnail_key = f'{user.workspace_id}/brand-assets/{upload_id}.thumbnail.webp'
+    original_content_type = {
+        '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+        '.webp': 'image/webp', '.gif': 'image/gif',
+    }[suffix]
+    try:
+        storage = get_storage()
+        await asyncio.to_thread(storage.put_bytes, original_key, raw, original_content_type)
+        await asyncio.to_thread(storage.put_bytes, storage_key, processed, 'image/webp')
+        await asyncio.to_thread(storage.put_bytes, thumbnail_key, thumbnail, 'image/webp')
+    except Exception as exc:
+        raise HTTPException(503, 'Logo storage is unavailable.') from exc
+    item = BrandAsset(
+        workspace_id=user.workspace_id,
+        kind='logo',
+        name=name.strip(),
+        data={
+            'storage_key': storage_key,
+            'original_storage_key': original_key,
+            'thumbnail_storage_key': thumbnail_key,
+            'width': width,
+            'height': height,
+            'aspect_ratio': width / height,
+        },
+        created_by=user.id,
+    )
+    db.add(item)
+    await db.flush()
+    await write_audit(db, user, 'asset.logo_uploaded', {'asset_id': item.id, 'name': item.name})
+    await db.commit()
+    await db.refresh(item)
+    return asset_view(item)
 
 @router.patch('/assets/{asset_id}')
 async def update_asset(asset_id: str, body: AssetPatch, user: CurrentUser, db: DBSession):
     ensure_role(user, ADMIN_ROLES)
     item = await db.scalar(select(BrandAsset).where(BrandAsset.id == asset_id, BrandAsset.workspace_id == user.workspace_id))
     if not item: raise HTTPException(404, 'Asset not found.')
+    if item.kind == 'logo' and body.data is not None:
+        raise HTTPException(422, 'Uploaded logo storage metadata cannot be edited; upload a replacement logo instead.')
     for key, value in body.model_dump(exclude_unset=True).items():
         if value is not None: setattr(item, key, value)
     await write_audit(db, user, 'asset.updated', {'asset_id':item.id,'kind':item.kind})

@@ -1,16 +1,28 @@
 from datetime import datetime, timezone
 from uuid import uuid4
-from sqlalchemy import String, Text, DateTime, ForeignKey, Integer, Boolean, JSON, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, Text, DateTime, ForeignKey, Integer, Boolean, JSON, UniqueConstraint, false
+from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy.orm import Mapped, mapped_column, validates
 from app.db.base import Base
+from app.db.types import EmbeddingVector
 
 def uid() -> str: return str(uuid4())
 def now_utc(): return datetime.now(timezone.utc)
+
+def normalize_severity(value: str) -> str:
+    normalized = {"warning": "major", "blocker": "critical", "info": "advisory"}.get(
+        value.lower(), value.lower()
+    )
+    if normalized not in {"critical", "major", "advisory"}:
+        raise ValueError("Severity must be critical, major, or advisory.")
+    return normalized
+
 
 class Workspace(Base):
     __tablename__ = 'workspaces'
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
+    settings: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
 class User(Base):
@@ -20,6 +32,8 @@ class User(Base):
     workspace_id: Mapped[str] = mapped_column(ForeignKey('workspaces.id', ondelete='CASCADE'), index=True, nullable=False)
     email: Mapped[str] = mapped_column(String(254), index=True, nullable=False)
     full_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    team: Mapped[str | None] = mapped_column(String(160), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(256), nullable=False)
     role: Mapped[str] = mapped_column(String(32), default='creator', nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -45,8 +59,9 @@ class Rule(Base):
     code: Mapped[str] = mapped_column(String(80), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(EmbeddingVector(), nullable=True)
     type: Mapped[str] = mapped_column(String(40), default='brand_voice', nullable=False)
-    severity: Mapped[str] = mapped_column(String(20), default='warning', nullable=False)
+    severity: Mapped[str] = mapped_column(String(20), default='major', nullable=False)
     channels: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default='draft', nullable=False)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
@@ -55,6 +70,10 @@ class Rule(Base):
     confirmed_by: Mapped[str | None] = mapped_column(ForeignKey('users.id'), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc, nullable=False)
+
+    @validates("severity")
+    def validate_severity(self, _key, value):
+        return normalize_severity(value)
 
 class RuleExample(Base):
     __tablename__ = 'rule_examples'
@@ -76,6 +95,7 @@ class Fact(Base):
     valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     source_ref: Mapped[str] = mapped_column(String(500), nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(EmbeddingVector(), nullable=True)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default='active', nullable=False)
     created_by: Mapped[str] = mapped_column(ForeignKey('users.id'), nullable=False)
@@ -87,6 +107,7 @@ class BrandAsset(Base):
     workspace_id: Mapped[str] = mapped_column(ForeignKey('workspaces.id', ondelete='CASCADE'), index=True, nullable=False)
     kind: Mapped[str] = mapped_column(String(40), nullable=False)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
+    storage_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     data: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     created_by: Mapped[str] = mapped_column(ForeignKey('users.id'), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc, nullable=False)
@@ -97,7 +118,7 @@ class AuditEvent(Base):
     workspace_id: Mapped[str] = mapped_column(ForeignKey('workspaces.id', ondelete='CASCADE'), index=True, nullable=False)
     actor_id: Mapped[str | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     type: Mapped[str] = mapped_column(String(100), nullable=False)
-    payload: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    payload: Mapped[dict] = mapped_column(MutableDict.as_mutable(JSON), default=dict, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
 class ContentItem(Base):
@@ -123,6 +144,9 @@ class ContentRevision(Base):
     caption: Mapped[str] = mapped_column(Text, default='', nullable=False)
     alt_text: Mapped[str] = mapped_column(Text, default='', nullable=False)
     is_ai_media: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    paid_gifted: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
     detected_language: Mapped[str] = mapped_column(String(30), default='unknown', nullable=False)
     image_analysis: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     creative_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -146,9 +170,19 @@ class ClaimFinding(Base):
     rationale: Mapped[str] = mapped_column(Text, nullable=False)
     evidence: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     severity: Mapped[str] = mapped_column(String(20), default='advisory', nullable=False)
+    layer: Mapped[str] = mapped_column(String(40), default='deterministic', nullable=False)
+    span_start: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    span_end: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    region: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    suggested_fix: Mapped[str | None] = mapped_column(Text, nullable=True)
+    intent_check: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     analysis_method: Mapped[str] = mapped_column(String(40), default='deterministic_v1', nullable=False)
     state: Mapped[str] = mapped_column(String(30), default='open', nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
+    @validates("severity")
+    def validate_severity(self, _key, value):
+        return normalize_severity(value)
 
 
 class ReviewComment(Base):
@@ -157,8 +191,10 @@ class ReviewComment(Base):
     workspace_id: Mapped[str] = mapped_column(ForeignKey('workspaces.id', ondelete='CASCADE'), index=True, nullable=False)
     content_id: Mapped[str] = mapped_column(ForeignKey('content_items.id', ondelete='CASCADE'), index=True, nullable=False)
     finding_id: Mapped[str | None] = mapped_column(ForeignKey('claim_findings.id', ondelete='CASCADE'), nullable=True)
+    parent_id: Mapped[str | None] = mapped_column(ForeignKey('review_comments.id', ondelete='CASCADE'), nullable=True)
     user_id: Mapped[str] = mapped_column(ForeignKey('users.id'), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
+    resolved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
 class FindingDecision(Base):
@@ -186,6 +222,10 @@ class Precedent(Base):
     approved_by: Mapped[str | None] = mapped_column(ForeignKey('users.id'), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    embedding: Mapped[list[float] | None] = mapped_column(EmbeddingVector(), nullable=True)
+    scope_type: Mapped[str] = mapped_column(String(40), default='workspace', nullable=False)
+    scope_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    scope: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
 
 class ReviewJob(Base):
@@ -203,6 +243,12 @@ class ReviewJob(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
+    lease_owner: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    timeout_seconds: Mapped[int] = mapped_column(Integer, default=900, nullable=False)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 class AICall(Base):
     __tablename__ = 'ai_calls'
@@ -234,6 +280,38 @@ class Report(Base):
     json_summary: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     created_by: Mapped[str] = mapped_column(ForeignKey('users.id'), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
+
+class Notification(Base):
+    __tablename__ = 'notifications'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    workspace_id: Mapped[str] = mapped_column(ForeignKey('workspaces.id', ondelete='CASCADE'), index=True, nullable=False)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), index=True, nullable=False)
+    type: Mapped[str] = mapped_column(String(80), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    body: Mapped[str] = mapped_column(Text, default='', nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
+
+class RefreshToken(Base):
+    __tablename__ = 'refresh_tokens'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    workspace_id: Mapped[str] = mapped_column(ForeignKey('workspaces.id', ondelete='CASCADE'), index=True, nullable=False)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), index=True, nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    replaced_by: Mapped[str | None] = mapped_column(ForeignKey('refresh_tokens.id'), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
+
+class LoginRateLimit(Base):
+    __tablename__ = 'login_rate_limits'
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    failures: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    window_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
 class Embedding(Base):
     __tablename__ = 'embeddings'
