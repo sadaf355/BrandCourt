@@ -74,11 +74,15 @@ class Settings(BaseSettings):
     def normalize_database_url_field(cls, value: str) -> str:
         return normalize_database_url(value)
 
-    @field_validator("cors_origins")
+    @field_validator("cors_origins", mode="before")
     @classmethod
     def validate_cors_origins(cls, value: str) -> str:
-        origins = [origin.strip() for origin in value.split(",") if origin.strip()]
-        for origin in origins:
+        origins = []
+        for raw in str(value).split(","):
+            origin = raw.strip()
+            if not origin:
+                continue
+            origin = origin.rstrip("/")
             parsed = urlsplit(origin)
             if (
                 origin == "*"
@@ -91,6 +95,7 @@ class Settings(BaseSettings):
                 or parsed.password
             ):
                 raise ValueError("CORS origins must be explicit HTTP(S) origins without paths or credentials.")
+            origins.append(origin)
         return ",".join(origins)
 
     @model_validator(mode="after")

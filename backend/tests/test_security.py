@@ -95,6 +95,11 @@ def test_cors_requires_explicit_http_origins(origins):
         Settings(cors_origins=origins)
 
 
+def test_cors_normalizes_trailing_slashes():
+    settings = Settings(cors_origins="https://brandcourt.vercel.app/, https://example.com")
+    assert settings.allowed_origins == ["https://brandcourt.vercel.app", "https://example.com"]
+
+
 def test_production_requires_a_strong_secret():
     with pytest.raises(ValidationError):
         Settings(app_env="production", secret_key="too-short")
