@@ -102,7 +102,7 @@ This contract describes the routes currently registered by the FastAPI applicati
 | `POST /api/content/{content_id}/verify-fix` | `{proposed_text, finding_id?}`; proposed_text is 1–20,000 chars | `{content_id, source_revision_id, source_revision_version, candidate_text, similarity, embedding_similarity, call_to_action_preserved, changed_claims, intent_check, intent_preserved, full_engine_rerun, candidate_findings, new_blocking_findings, safe_to_suggest, method, limitations}`; runs the full engine against a temporary revision, rejects newly introduced critical findings, and stores the intent check on the source finding when supplied | Any authenticated role |
 | `POST /api/findings/{finding_id}/suggest-fix` | None | `{finding_id, suggested_fix, source_fact_id, method, accepted, model_status, rejection_reason, verification}`; a suggestion is retained only after a full-engine rerun, no new critical finding, and intent similarity ≥0.80 with CTA preservation | Any authenticated role |
 | `GET /api/insights` | None | `{items_total, findings_total, decisions_total, overrides, disputes, by_status, by_channel, by_verdict, top_evidence_codes: [{code, count}], override_dispute_by_code: [{code, overrides, disputes}], approved_items_with_timing, average_upload_to_approval_seconds, average_review_rounds, active_rules, model_mode, note}` | Any authenticated role |
-| `GET /api/review-queue` | None | `[{id, title, channel, status, current_revision, language, finding_count, critical_count, updated_at}]` | reviewer, manager, admin |
+| `GET /api/review-queue` | Optional query: `status`, `channel`, `severity`, `creator`, `include_advisory` (default `false`), `limit` (1–100, default 20), `offset` (default 0) | `{items: [{id, title, channel, campaign, status, current_revision, language, finding_count, critical_count, major_count, disputed_count, has_blockers, priority_score, updated_at}], total, limit, offset}` | reviewer, manager, admin |
 
 ### Model disclosure
 
@@ -110,6 +110,20 @@ This contract describes the routes currently registered by the FastAPI applicati
 |---|---|---|---|
 | `GET /api/model-calls` | Optional query: `limit` (1–500; default 100) | `[{id, revision_id, provider, model, purpose, input_chars, masked_entities, started_at, duration_ms, status}]` | Any authenticated role |
 | `GET /api/model-mode` | None | `{mode, provider, model, base_url_configured, notice}` | Any authenticated role |
+
+### Analytics, reports, notifications, and model settings
+
+| Method and path | Request | Success response | Allowed roles |
+|---|---|---|---|
+| `GET /api/insights/summary` | None | `{workspace_id, total_items, approved_items, total_findings, severity_distribution, overrides_total, disputes_total, expiring_facts_count, average_approval_hours, average_review_rounds, model_mode, is_seeded_reference}`. `is_seeded_reference` is true when no approval durations are present. | Any authenticated role |
+| `GET /api/insights/top-rules` | Query: `group_by=channel|creator|week` (default `channel`) | `{group_by, data: [{channel|creator|week, rule_code, count}]}` | Any authenticated role |
+| `GET /api/insights/override-rates` | None | `{rules: [{rule_code, overrides, disputes, total, override_rate_pct, dispute_rate_pct}]}` | Any authenticated role |
+| `GET /api/insights/expiring-facts` | None | `{facts: [{id, code, statement, valid_to, days_remaining, is_expired, requires_review}]}` | Any authenticated role |
+| `GET /api/reports/content/{content_id}/json` | None | JSON report with report ID, approved content/revision, findings, decisions, and model-call disclosure; only approved, locked content is reportable | Any authenticated role |
+| `GET /api/reports/content/{content_id}/pdf` | None | `application/pdf` attachment for approved, locked content | Any authenticated role |
+| `GET /api/notifications` | None | `[{id, type, title, message, link, created_at, read}]`; review-queue notices are included for reviewer/manager/admin roles, and pending-precedent notices for manager/admin roles | Any authenticated role |
+| `GET /api/settings/models` | None | `{local_model_enabled, active_models, data_flow_log, masking_policy}` | Any authenticated role |
+| `PATCH /api/settings/models` | `{local_model_enabled, default_model?}`; `default_model` defaults to `deterministic_baseline_v1` | `{local_model_enabled, default_model, message}`; the change is audit-logged | admin |
 
 ## Common errors and state constraints
 
@@ -124,4 +138,4 @@ This contract describes the routes currently registered by the FastAPI applicati
 - `429`: the login failure threshold for the caller's IP/email pair has been reached; response includes `Retry-After`.
 - A finding verdict is `supported`, `contradicted`, `outdated`, `unsupported`, or `needs_human_review`. Severity values are `critical`, `major`, or `advisory`; legacy model writes of `warning`, `blocker`, or `info` normalize to `major`, `critical`, and `advisory` respectively. The schema migration changes persisted `warning` values to `major`.
 
-Refresh tokens are opaque, stored only as hashes, expire according to `REFRESH_TOKEN_DAYS`, and rotate on refresh. Logout revokes the submitted refresh token. The current content-analysis route still schedules in-process background work; a restart-surviving worker queue is not yet wired.
+Refresh tokens are opaque, stored only as hashes, expire according to `REFRESH_TOKEN_DAYS`, and rotate on refresh. Logout revokes the submitted refresh token. Content analysis is queued durably in the database and processed by the worker process; queued jobs survive API restarts.

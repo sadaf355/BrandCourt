@@ -1,17 +1,481 @@
+import {
+  User,
+  ContentItem,
+  ContentRevision,
+  ClaimFinding,
+  ReviewJob,
+  Comment,
+  ReviewQueuePage,
+  WorkspaceMember,
+  RuleWithHistory,
+  FactWithHistory,
+  BrandAsset,
+  AuditEvent,
+  AppNotification,
+  ApprovalResult,
+  GuidelineUploadResult,
+  FindingSeverity,
+  ContentStatus,
+  Role,
+  InsightsSummary,
+  TopRuleBroken,
+  OverrideRateItem,
+  ExpiringFactItem,
+  ComplianceReport,
+  GuidelineHealthReport,
+  PrecedentItem,
+  ModelSettings,
+} from '../types/api'
+import { mockService } from './mockService'
+
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace(/\/$/, '')
-export function getToken() { try { return localStorage.getItem('brandcourt-token') } catch { return null } }
-export function setToken(token: string | null) { try { token ? localStorage.setItem('brandcourt-token', token) : localStorage.removeItem('brandcourt-token') } catch { /* Storage can be disabled. */ } }
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || false
+
+export function getToken(): string | null {
+  try {
+    return localStorage.getItem('brandcourt-token')
+  } catch {
+    return null
+  }
+}
+
+export function setToken(token: string | null): void {
+  try {
+    if (token) {
+      localStorage.setItem('brandcourt-token', token)
+    } else {
+      localStorage.removeItem('brandcourt-token')
+    }
+  } catch {
+    // Storage might be disabled
+  }
+}
+
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers)
   const token = getToken()
   if (token) headers.set('Authorization', `Bearer ${token}`)
-  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
-  const response = await fetch(`${API_BASE}${path.startsWith('/') ? path : `/${path}`}`, { ...options, headers })
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  const response = await fetch(`${API_BASE}${path.startsWith('/') ? path : `/${path}`}`, {
+    ...options,
+    headers,
+  })
+
+  if (response.status === 401) {
+    setToken(null)
+    window.dispatchEvent(new CustomEvent('brandcourt-unauthorized'))
+  }
+
   if (response.status === 204) return undefined as T
   const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : `Request failed (${response.status})`)
+  if (!response.ok) {
+    throw new Error(typeof data.detail === 'string' ? data.detail : `Request failed (${response.status})`)
+  }
   return data as T
 }
+
 export const apiBase = API_BASE
-export type HealthPayload = { status: 'ok' | 'degraded'; service: string; version: string; timestamp: string; database: 'connected' | 'not_configured' | 'unavailable' }
-export function getHealth(signal?: AbortSignal) { return api<HealthPayload>('/health', { signal }) }
+
+export type HealthPayload = {
+  status: 'ok' | 'degraded'
+  service: string
+  version: string
+  timestamp: string
+  database: 'connected' | 'not_configured' | 'unavailable'
+}
+
+export function getHealth(signal?: AbortSignal) {
+  return api<HealthPayload>('/health', { signal })
+}
+
+// Unified client switching seamlessly between real API and mockService
+export const apiClient = {
+  async getMe(): Promise<User> {
+    if (USE_MOCK) return mockService.getUser()
+    return api<User>('/me')
+  },
+  async getWorkspace(): Promise<{ id: string; name: string }> {
+    if (USE_MOCK) return { id: mockService.getUser().workspace_id, name: 'Aurora Brand Lab' }
+    return api<{ id: string; name: string }>('/workspace')
+  },
+  async listContent(): Promise<ContentItem[]> {
+    if (USE_MOCK) return mockService.listContent()
+    return api<ContentItem[]>('/content')
+  },
+  async getContent(id: string): Promise<ContentItem> {
+    if (USE_MOCK) {
+      const res = await mockService.getContent(id)
+      if (!res) throw new Error('Content not found')
+      return res
+    }
+    return api<ContentItem>(`/content/${id}`)
+  },
+  async createContent(data: {
+    title: string
+    channel: ContentItem['channel']
+    campaign?: string
+    caption?: string
+    alt_text?: string
+    is_ai_media?: boolean
+  }): Promise<ContentItem> {
+    if (USE_MOCK) return mockService.createContent(data)
+    return api<ContentItem>('/content', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+  async createRevision(
+    contentId: string,
+    data: {
+      caption: string
+      alt_text?: string
+      is_ai_media?: boolean
+      title?: string
+      channel?: ContentItem['channel']
+      campaign?: string
+    }
+  ): Promise<ContentRevision> {
+    if (USE_MOCK) return mockService.createRevision(contentId, data)
+    return api<ContentRevision>(`/content/${contentId}/revisions`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+  async startAnalysisJob(contentId: string): Promise<{ job_id: string; message: string }> {
+    if (USE_MOCK) {
+      const jobId = await mockService.startAnalysisJob(contentId)
+      return { job_id: jobId, message: 'Analysis queued' }
+    }
+    return api<{ job_id: string; message: string }>(`/content/${contentId}/analyze`, {
+      method: 'POST',
+    })
+  },
+  async getJob(jobId: string): Promise<ReviewJob> {
+    if (USE_MOCK) return mockService.getJob(jobId)
+    return api<ReviewJob>(`/jobs/${jobId}`)
+  },
+  async submitFindingDecision(
+    contentId: string,
+    findingId: string,
+    action: 'accept' | 'dispute' | 'override' | 'resolve',
+    note?: string
+  ): Promise<ClaimFinding> {
+    if (USE_MOCK) return mockService.submitFindingDecision(contentId, findingId, action, note)
+    return api<ClaimFinding>(`/findings/${findingId}/decisions`, {
+      method: 'POST',
+      body: JSON.stringify({ action, note }),
+    })
+  },
+  async submitForReview(contentId: string): Promise<ContentItem> {
+    if (USE_MOCK) return mockService.submitForReview(contentId)
+    return api<ContentItem>(`/content/${contentId}/submit`, {
+      method: 'POST',
+    })
+  },
+  async startReview(contentId: string): Promise<ContentItem> {
+    if (USE_MOCK) return mockService.startReview(contentId)
+    return api<ContentItem>(`/content/${contentId}/start-review`, {
+      method: 'POST',
+    })
+  },
+  async approveContent(contentId: string): Promise<ContentItem> {
+    if (USE_MOCK) return mockService.approveContent(contentId)
+    return api<ContentItem>(`/content/${contentId}/approve`, {
+      method: 'POST',
+    })
+  },
+  async rejectContent(contentId: string): Promise<ContentItem> {
+    if (USE_MOCK) return mockService.rejectContent(contentId)
+    return api<ContentItem>(`/content/${contentId}/reject`, {
+      method: 'POST',
+    })
+  },
+  async reopenContent(contentId: string): Promise<ContentItem> {
+    if (USE_MOCK) return mockService.reopenContent(contentId)
+    return api<ContentItem>(`/content/${contentId}/reopen`, {
+      method: 'POST',
+    })
+  },
+
+  // ── B3: Review queue ───────────────────────────────────────────────────────
+  async listReviewQueue(params?: {
+    status?: ContentStatus
+    channel?: string
+    severity?: FindingSeverity
+    creator?: string
+    include_advisory?: boolean
+    limit?: number
+    offset?: number
+  }): Promise<ReviewQueuePage> {
+    if (USE_MOCK) return mockService.listReviewQueue(params)
+    const q = new URLSearchParams()
+    if (params?.status) q.set('status', params.status)
+    if (params?.channel) q.set('channel', params.channel)
+    if (params?.severity) q.set('severity', params.severity)
+    if (params?.creator) q.set('creator', params.creator)
+    if (params?.include_advisory) q.set('include_advisory', 'true')
+    if (params?.limit != null) q.set('limit', String(params.limit))
+    if (params?.offset != null) q.set('offset', String(params.offset))
+    return api<ReviewQueuePage>(`/review-queue?${q}`)
+  },
+
+  // ── B3: Approve / reject with reason ──────────────────────────────────────
+  async approveContentWithReason(contentId: string): Promise<ApprovalResult> {
+    if (USE_MOCK) return mockService.approveContentWithReason(contentId)
+    return api<ApprovalResult>(`/content/${contentId}/approve`, { method: 'POST' })
+  },
+  async rejectContentWithReason(contentId: string, reason: string): Promise<ContentItem> {
+    if (USE_MOCK) return mockService.rejectContentWithReason(contentId, reason)
+    return api<ContentItem>(`/content/${contentId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    })
+  },
+  async overrideFinding(
+    contentId: string,
+    findingId: string,
+    reason: string
+  ): Promise<ClaimFinding> {
+    if (USE_MOCK) return mockService.overrideFinding(contentId, findingId, reason)
+    return api<ClaimFinding>(`/findings/${findingId}/decisions`, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'override', note: reason }),
+    })
+  },
+
+  // ── B3: Comments ──────────────────────────────────────────────────────────
+  async listComments(contentId: string, findingId?: string): Promise<Comment[]> {
+    if (USE_MOCK) return mockService.listComments(contentId, findingId)
+    const q = findingId ? `?finding_id=${findingId}` : ''
+    return api<Comment[]>(`/content/${contentId}/comments${q}`)
+  },
+  async addComment(
+    contentId: string,
+    body: string,
+    findingId?: string,
+    parentId?: string
+  ): Promise<Comment> {
+    if (USE_MOCK) return mockService.addComment(contentId, body, findingId, parentId)
+    return api<Comment>(`/content/${contentId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body, finding_id: findingId, parent_id: parentId }),
+    })
+  },
+  async resolveComment(contentId: string, commentId: string): Promise<Comment> {
+    if (USE_MOCK) return mockService.resolveComment(contentId, commentId)
+    return api<Comment>(`/content/${contentId}/comments/${commentId}/resolve`, {
+      method: 'POST',
+    })
+  },
+
+  // ── B3: Notifications ─────────────────────────────────────────────────────
+  async listNotifications(): Promise<AppNotification[]> {
+    if (USE_MOCK) return mockService.listNotifications()
+    return api<AppNotification[]>('/notifications')
+  },
+
+  // ── B3: Members ───────────────────────────────────────────────────────────
+  async listMembers(): Promise<WorkspaceMember[]> {
+    if (USE_MOCK) return mockService.listMembers()
+    return api<WorkspaceMember[]>('/workspace/members')
+  },
+  async inviteMember(email: string, role: Role): Promise<WorkspaceMember> {
+    if (USE_MOCK) return mockService.inviteMember(email, role)
+    return api<WorkspaceMember>('/workspace/members', {
+      method: 'POST',
+      body: JSON.stringify({ email, role }),
+    })
+  },
+  async changeMemberRole(userId: string, role: Role): Promise<WorkspaceMember> {
+    if (USE_MOCK) return mockService.changeMemberRole(userId, role)
+    return api<WorkspaceMember>(`/workspace/members/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    })
+  },
+  async deactivateMember(userId: string): Promise<WorkspaceMember> {
+    if (USE_MOCK) return mockService.deactivateMember(userId)
+    return api<WorkspaceMember>(`/workspace/members/${userId}/deactivate`, {
+      method: 'POST',
+    })
+  },
+  async deleteWorkspaceData(reason: string): Promise<{ audit_event_id: string }> {
+    if (USE_MOCK) return mockService.deleteWorkspaceData(reason)
+    return api<{ audit_event_id: string }>('/workspace/delete', {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    })
+  },
+
+  // ── B3: Rules ─────────────────────────────────────────────────────────────
+  async listRules(params?: {
+    status?: 'draft' | 'active' | 'retired'
+    is_india_pack?: boolean
+  }): Promise<RuleWithHistory[]> {
+    if (USE_MOCK) return mockService.listRules(params)
+    const q = new URLSearchParams()
+    if (params?.status) q.set('status', params.status)
+    if (params?.is_india_pack != null) q.set('is_india_pack', String(params.is_india_pack))
+    return api<RuleWithHistory[]>(`/rules?${q}`)
+  },
+  async updateRule(
+    ruleId: string,
+    data: Partial<{ name: string; description: string; status: 'draft' | 'active' | 'retired' }>
+  ): Promise<RuleWithHistory> {
+    if (USE_MOCK) return mockService.updateRule(ruleId, data)
+    return api<RuleWithHistory>(`/rules/${ruleId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
+
+  // ── B3: Facts ─────────────────────────────────────────────────────────────
+  async listFacts(): Promise<FactWithHistory[]> {
+    if (USE_MOCK) return mockService.listFacts()
+    return api<FactWithHistory[]>('/facts')
+  },
+  async createFact(data: {
+    statement: string
+    claim_value?: string
+    unit?: string
+    source_reference: string
+    valid_from?: string
+    valid_until?: string
+  }): Promise<FactWithHistory> {
+    if (USE_MOCK) return mockService.createFact(data)
+    return api<FactWithHistory>('/facts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  // ── B3: Assets ────────────────────────────────────────────────────────────
+  async listAssets(): Promise<BrandAsset[]> {
+    if (USE_MOCK) return mockService.listAssets()
+    return api<BrandAsset[]>('/assets')
+  },
+  async upsertAsset(name: string, assetType: string, contentJson: unknown): Promise<BrandAsset> {
+    if (USE_MOCK) return mockService.upsertAsset(name, assetType, contentJson)
+    return api<BrandAsset>('/assets', {
+      method: 'POST',
+      body: JSON.stringify({ name, asset_type: assetType, content_json: contentJson }),
+    })
+  },
+
+  // ── B3: Guidelines ────────────────────────────────────────────────────────
+  async uploadGuideline(file: File): Promise<GuidelineUploadResult> {
+    if (USE_MOCK) return mockService.uploadGuideline(file)
+    const form = new FormData()
+    form.append('file', file)
+    return api<GuidelineUploadResult>('/guidelines/upload', {
+      method: 'POST',
+      body: form,
+    })
+  },
+
+  // ── B3: Audit trail ───────────────────────────────────────────────────────
+  async listAuditEvents(params?: {
+    scope?: 'own' | 'assigned' | 'workspace' | 'rules'
+    limit?: number
+    offset?: number
+  }): Promise<{ events: AuditEvent[]; total: number }> {
+    if (USE_MOCK) return mockService.listAuditEvents(params)
+    const q = new URLSearchParams()
+    if (params?.scope) q.set('scope', params.scope)
+    if (params?.limit != null) q.set('limit', String(params.limit))
+    if (params?.offset != null) q.set('offset', String(params.offset))
+    return api<{ events: AuditEvent[]; total: number }>(`/audit?${q}`)
+  },
+
+  // ── B4: Insights & Analytics ──────────────────────────────────────────────
+  async getInsightsSummary(): Promise<InsightsSummary> {
+    if (USE_MOCK) return mockService.getInsightsSummary()
+    return api<InsightsSummary>('/insights/summary')
+  },
+  async getTopRulesBroken(groupBy: 'channel' | 'creator' | 'week' = 'channel'): Promise<TopRuleBroken> {
+    if (USE_MOCK) return mockService.getTopRulesBroken(groupBy)
+    return api<TopRuleBroken>(`/insights/top-rules?group_by=${groupBy}`)
+  },
+  async getOverrideRates(): Promise<{ rules: OverrideRateItem[] }> {
+    if (USE_MOCK) return mockService.getOverrideRates()
+    return api<{ rules: OverrideRateItem[] }>('/insights/override-rates')
+  },
+  async getExpiringFacts(): Promise<{ facts: ExpiringFactItem[] }> {
+    if (USE_MOCK) return mockService.getExpiringFacts()
+    return api<{ facts: ExpiringFactItem[] }>('/insights/expiring-facts')
+  },
+
+  // ── B4: Reports ───────────────────────────────────────────────────────────
+  async downloadReportJson(contentId: string): Promise<ComplianceReport> {
+    if (USE_MOCK) return mockService.downloadReportJson(contentId)
+    return api<ComplianceReport>(`/reports/content/${contentId}/json`)
+  },
+  async downloadReportPdf(contentId: string): Promise<Blob> {
+    if (USE_MOCK) return mockService.downloadReportPdf(contentId)
+    const res = await fetch(`${API_BASE}/reports/content/${contentId}/pdf`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('brandcourt_token') || ''}` },
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to download PDF' }))
+      throw new Error(err.detail || 'Download failed')
+    }
+    return res.blob()
+  },
+
+  // ── B4: Intelligence screens (Health, Precedents, Fix Verification, Models)
+  async getGuidelineHealth(): Promise<GuidelineHealthReport> {
+    if (USE_MOCK) return mockService.getGuidelineHealth()
+    return api<GuidelineHealthReport>('/guideline-health')
+  },
+  async listPrecedents(): Promise<PrecedentItem[]> {
+    if (USE_MOCK) return mockService.listPrecedents()
+    return api<PrecedentItem[]>('/precedents')
+  },
+  async createPrecedent(data: {
+    finding_id: string
+    rule_id?: string
+    channel?: string
+    pattern_text: string
+    reason: string
+    valid_to?: string
+  }): Promise<PrecedentItem> {
+    if (USE_MOCK) return mockService.createPrecedent(data)
+    return api<PrecedentItem>('/precedents', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+  async approvePrecedent(id: string): Promise<{ id: string; status: string }> {
+    if (USE_MOCK) return mockService.approvePrecedent(id)
+    return api<{ id: string; status: string }>(`/precedents/${id}/approve`, {
+      method: 'POST',
+    })
+  },
+  async promotePrecedent(id: string): Promise<{ precedent_id: string; rule_id: string; code: string; message: string }> {
+    if (USE_MOCK) return mockService.promotePrecedent(id)
+    return api<{ precedent_id: string; rule_id: string; code: string; message: string }>(`/precedents/${id}/promote`, {
+      method: 'POST',
+    })
+  },
+  async verifyFix(contentId: string, proposedText: string): Promise<any> {
+    if (USE_MOCK) return mockService.verifyFix(contentId, proposedText)
+    return api<any>(`/content/${contentId}/verify-fix`, {
+      method: 'POST',
+      body: JSON.stringify({ proposed_text: proposedText }),
+    })
+  },
+  async getModelSettings(): Promise<ModelSettings> {
+    if (USE_MOCK) return mockService.getModelSettings()
+    return api<ModelSettings>('/settings/models')
+  },
+  async updateModelSettings(data: { local_model_enabled: boolean; default_model?: string }): Promise<{ local_model_enabled: boolean; message: string }> {
+    if (USE_MOCK) return mockService.updateModelSettings(data)
+    return api<{ local_model_enabled: boolean; message: string }>('/settings/models', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
+}

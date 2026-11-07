@@ -11,6 +11,8 @@ from app.api.content import router as content_router
 from app.api.workflow import router as workflow_router
 from app.api.intelligence import router as intelligence_router
 from app.api.release import router as release_router
+from app.api.notifications import router as notifications_router
+from app.api.insights import router as insights_router
 from app.db.base import Base
 import app.models.entities  # Register ORM models before migrations/tests
 
@@ -63,6 +65,8 @@ app.include_router(content_router, prefix=settings.api_prefix)
 app.include_router(workflow_router, prefix=settings.api_prefix)
 app.include_router(intelligence_router, prefix=settings.api_prefix)
 app.include_router(release_router, prefix=settings.api_prefix)
+app.include_router(notifications_router, prefix=settings.api_prefix)
+app.include_router(insights_router, prefix=settings.api_prefix)
 
 
 @app.get("/", tags=["root"], summary="API landing endpoint")
