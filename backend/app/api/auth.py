@@ -42,6 +42,7 @@ def user_view(user: User):
     return {'id': user.id, 'workspace_id': user.workspace_id, 'email': user.email, 'full_name': user.full_name, 'role': user.role, 'is_active': user.is_active, 'created_at': user.created_at}
 def _new_refresh_token(user: User) -> tuple[str, RefreshToken]:
     token = secrets.token_urlsafe(48)
+    
     record = RefreshToken(
         workspace_id=user.workspace_id,
         user_id=user.id,

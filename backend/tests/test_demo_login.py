@@ -229,3 +229,4 @@ def test_demo_login_rate_limiting(api_client, test_database, tmp_path: Path, mon
     r_blocked = api_client("POST", "/api/auth/demo-login", json={"role": "admin"})
     assert r_blocked.status_code == 429
     assert "Too many sign-in attempts" in r_blocked.json()["detail"]
+

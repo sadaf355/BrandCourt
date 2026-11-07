@@ -98,15 +98,6 @@ DEMO_DRAFTS = [
         "is_ai_media": False,
         "is_image_check": False,
     },
-    {
-        "key": "F",
-        "title": "Demo: image check",
-        "channel": "instagram",
-        "caption": "Clinically tested GlowSerum daily ritual. Dermatologist approved.",
-        "paid_gifted": False,
-        "is_ai_media": False,
-        "is_image_check": True,
-    },
 ]
 
 _provisioning_lock = asyncio.Lock()

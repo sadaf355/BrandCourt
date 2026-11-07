@@ -47,7 +47,7 @@ To manually seed a repeatable demo workspace with extra roles, conflicting rules
    - Active role accounts for creator, reviewer, manager, and demo admin.
    - Facts including `FACT-DEMO-EXPIRING` (valid for 3 days) and the expired `FACT-OFFER`.
    - Conflicting rules (`DEMO-CONFLICT-A` and `DEMO-CONFLICT-B`) for Guideline Health testing.
-   - Six drafts under "GlowSerum DEMO" exercising wrong numbers, regional language (Marathi), missing disclosures, clean approved content (locked and snapshotted), fresh findings, and image intelligence verification (`Demo: image check`).
+   - Five drafts under "GlowSerum DEMO" exercising wrong numbers, regional language (Marathi), missing disclosures, clean approved content (locked and snapshotted), and fresh findings.
    - A disputed finding and pending precedent for the Precedent Ledger.
 
 ## 5–8 user feedback sessions

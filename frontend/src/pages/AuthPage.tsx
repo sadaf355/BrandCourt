@@ -13,7 +13,7 @@ export function AuthPage({ onSignedIn, initialMode = 'register' }: { onSignedIn:
   const [error, setError] = useState('')
   const [form, setForm] = useState({ workspace_name: '', full_name: '', email: '', password: '' })
   const change = (key: keyof typeof form, value: string) => setForm(current => ({ ...current, [key]: value }))
-  const demoLoginEnabled = import.meta.env.VITE_DEMO_LOGIN_ENABLED === 'true'
+  const demoLoginEnabled = import.meta.env.VITE_DEMO_LOGIN_ENABLED !== 'false'
 
   async function handleDemoLogin() {
     setDemoBusy(true)
@@ -62,7 +62,7 @@ export function AuthPage({ onSignedIn, initialMode = 'register' }: { onSignedIn:
       }}
     >
       <Sparkles size={16} />
-      {demoBusy ? 'Preparing demo workspace…' : 'GlowSerum Demo'}
+      {demoBusy ? 'Preparing demo…' : 'Demo'}
     </button>
     <p
       className="demo-login-caption"
