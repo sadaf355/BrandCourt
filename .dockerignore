@@ -1,0 +1,16 @@
+.git
+.github
+frontend
+docs
+data/sample
+node_modules
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.env
+.env.*
+!backend/.env.example
+brandcourt.db*
+backend/uploads/
+backend/tests/

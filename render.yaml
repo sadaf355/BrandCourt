@@ -2,6 +2,7 @@ services:
   - type: web
     name: brandcourt-api
     runtime: docker
+    rootDir: ./backend
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /api/health
