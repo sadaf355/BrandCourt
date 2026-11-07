@@ -280,7 +280,7 @@ export function NewReviewPage() {
                   borderRadius: '6px',
                   backgroundColor: 'var(--color-bg-subtle, rgba(255, 255, 255, 0.1))',
                   border: '1px solid var(--color-border, rgba(148, 163, 184, 0.3))',
-                  color: '#ffffff',
+                  color: 'var(--color-text-primary, inherit)',
                   fontSize: '0.85rem',
                   fontWeight: 600,
                   cursor: 'pointer',

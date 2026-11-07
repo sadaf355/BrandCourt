@@ -11,9 +11,11 @@ from app.core.job_queue import enqueue_review_job
 from app.core.job_worker import process_next_job
 from app.models.entities import (
     BrandAsset,
+    ClaimFinding,
     ContentItem,
     ContentRevision,
     Fact,
+    Precedent,
     ReviewJob,
     User,
 )
@@ -161,6 +163,173 @@ def test_seed_glowserum_skip_creatives(
             assert not upload_dir.exists() or not list(upload_dir.rglob("*.png"))
 
     asyncio.run(verify())
+
+
+def test_seed_glowserum_demo_workspace(
+    workspace_users,
+    test_database,
+    tmp_path,
+):
+    """Seed demo workspace mode creates extra users, 5 demo drafts, runs analysis, locks D, and creates pending precedent idempotently."""
+    users, _content_id, workspace_ids = workspace_users
+    upload_dir = tmp_path / "demo-workspace-uploads"
+    admin_email = "admin-1@example.com"
+    ws_id = workspace_ids[1]
+
+    # First run: seed demo workspace
+    asyncio.run(
+        seed_glowserum(
+            admin_email,
+            sessions=test_database,
+            upload_dir=upload_dir,
+            skip_creatives=True,
+            demo=True,
+            demo_password="demo-password-1234",
+        )
+    )
+
+    async def verify_first():
+        async with test_database() as session:
+            # 1. Three extra users exist
+            demo_users = (
+                await session.scalars(
+                    select(User).where(
+                        User.workspace_id == ws_id,
+                        User.email.in_([
+                            "creator@demo.local",
+                            "reviewer@demo.local",
+                            "manager@demo.local",
+                        ]),
+                    )
+                )
+            ).all()
+            assert len(demo_users) == 3
+            user_roles = {u.role: u.email for u in demo_users}
+            assert user_roles["creator"] == "creator@demo.local"
+            assert user_roles["reviewer"] == "reviewer@demo.local"
+            assert user_roles["manager"] == "manager@demo.local"
+
+            # 2. Five drafts exist under 'GlowSerum DEMO'
+            demo_items = (
+                await session.scalars(
+                    select(ContentItem).where(
+                        ContentItem.workspace_id == ws_id,
+                        ContentItem.campaign == "GlowSerum DEMO",
+                    )
+                )
+            ).all()
+            assert len(demo_items) == 5
+            titles = {i.title for i in demo_items}
+            assert titles == {
+                "Demo: wrong number",
+                "Demo: Marathi health claim",
+                "Demo: missing disclosure",
+                "Demo: clean and approved",
+                "Demo: fresh findings",
+            }
+
+            # 3. A has a contradicted finding
+            item_a = next(i for i in demo_items if i.title == "Demo: wrong number")
+            findings_a = (
+                await session.scalars(
+                    select(ClaimFinding).where(
+                        ClaimFinding.content_id == item_a.id,
+                        ClaimFinding.workspace_id == ws_id,
+                    )
+                )
+            ).all()
+            assert findings_a
+            assert any(f.verdict == "contradicted" for f in findings_a)
+
+            # 4. D is approved and locked
+            item_d = next(i for i in demo_items if i.title == "Demo: clean and approved")
+            assert item_d.status == "approved"
+            rev_d = await session.scalar(
+                select(ContentRevision).where(
+                    ContentRevision.content_id == item_d.id,
+                    ContentRevision.version == item_d.current_revision,
+                )
+            )
+            assert rev_d.locked_at is not None
+
+            # 5. A pending precedent exists
+            pending_precedents = (
+                await session.scalars(
+                    select(Precedent).where(
+                        Precedent.workspace_id == ws_id,
+                        Precedent.status == "pending",
+                    )
+                )
+            ).all()
+            assert len(pending_precedents) >= 1
+            finding_ids_a = {f.id for f in findings_a}
+            assert any(p.finding_id in finding_ids_a for p in pending_precedents)
+
+    asyncio.run(verify_first())
+
+    # Second run: assert idempotency (no duplicates created)
+    asyncio.run(
+        seed_glowserum(
+            admin_email,
+            sessions=test_database,
+            upload_dir=upload_dir,
+            skip_creatives=True,
+            demo=True,
+            demo_password="demo-password-1234",
+        )
+    )
+
+    async def verify_second():
+        async with test_database() as session:
+            # Users still exactly 3
+            demo_users = (
+                await session.scalars(
+                    select(User).where(
+                        User.workspace_id == ws_id,
+                        User.email.in_([
+                            "creator@demo.local",
+                            "reviewer@demo.local",
+                            "manager@demo.local",
+                        ]),
+                    )
+                )
+            ).all()
+            assert len(demo_users) == 3
+
+            # Drafts still exactly 5
+            demo_items = (
+                await session.scalars(
+                    select(ContentItem).where(
+                        ContentItem.workspace_id == ws_id,
+                        ContentItem.campaign == "GlowSerum DEMO",
+                    )
+                )
+            ).all()
+            assert len(demo_items) == 5
+
+            # Precedents still exactly 1
+            pending_precedents = (
+                await session.scalars(
+                    select(Precedent).where(
+                        Precedent.workspace_id == ws_id,
+                        Precedent.status == "pending",
+                    )
+                )
+            ).all()
+            assert len(pending_precedents) == 1
+
+            # D remains approved and locked
+            item_d = next(i for i in demo_items if i.title == "Demo: clean and approved")
+            assert item_d.status == "approved"
+            rev_d = await session.scalar(
+                select(ContentRevision).where(
+                    ContentRevision.content_id == item_d.id,
+                    ContentRevision.version == item_d.current_revision,
+                )
+            )
+            assert rev_d.locked_at is not None
+
+    asyncio.run(verify_second())
 
 
 def test_all_glowserum_seed_posts_run_through_durable_worker(

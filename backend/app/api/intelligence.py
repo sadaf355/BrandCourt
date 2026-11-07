@@ -376,12 +376,12 @@ async def create_precedent(body: PrecedentInput, user: CurrentUser, db: DBSessio
         select(FindingDecision.id).where(
             FindingDecision.finding_id == finding.id,
             FindingDecision.workspace_id == user.workspace_id,
-            FindingDecision.action == "override",
+            FindingDecision.action.in_(("override", "dispute")),
             func.length(func.trim(FindingDecision.reason)) > 0,
         ).limit(1)
     )
     if not override:
-        raise HTTPException(409, "A reasoned reviewer override is required before saving a precedent.")
+        raise HTTPException(409, "A reasoned reviewer override or dispute is required before saving a precedent.")
     content_item = await db.scalar(
         select(ContentItem).where(
             ContentItem.id == finding.content_id,

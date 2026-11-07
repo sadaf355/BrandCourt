@@ -24,6 +24,22 @@ To seed a hosted deployment without generating broken image links:
 2. The `--skip-creatives` flag ensures seeded rows have `creative_filename` and `creative_storage_key` set to `None`, and no local image files are written.
 3. Image posts must be uploaded live through the web UI so that image files are stored directly in the active environment's configured storage backend.
 
+## Demo workspace
+
+To seed a repeatable demo workspace with extra roles, conflicting rules, expiring facts, and 5 demo campaign drafts:
+
+1. Run the seed script with the demo flags:
+   ```bash
+   python -m app.seed_glowserum --email <admin email> --skip-creatives --demo --demo-password <password>
+   ```
+2. Note that images must be uploaded live.
+3. The demo workspace mode provisions:
+   - Three active role accounts: `creator@demo.local`, `reviewer@demo.local`, `manager@demo.local`.
+   - Facts including `FACT-DEMO-EXPIRING` (valid for 3 days) and the expired `FACT-OFFER`.
+   - Conflicting rules (`DEMO-CONFLICT-A` and `DEMO-CONFLICT-B`) for Guideline Health testing.
+   - Five drafts under "GlowSerum DEMO" exercising wrong numbers, regional language (Marathi), missing disclosures, clean approved content (locked and snapshotted), and fresh findings.
+   - A disputed finding and pending precedent for the Precedent Ledger.
+
 ## 5–8 user feedback sessions
 These sessions must be run with real participants; they cannot be honestly marked complete by a code-generation task. Obtain consent before recording. Do not use real customer claims or personal data. Suggested participants: 2 creators, 2 reviewers, 1 guideline owner/manager, and 1–3 additional marketers/compliance reviewers.
 
