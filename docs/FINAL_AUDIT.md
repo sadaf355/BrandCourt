@@ -33,6 +33,11 @@ Dataset: 52 fictional GlowSerum posts; SHA-256
 | False flags | 0 |
 | False negatives | 0 |
 | Failed cases | 0 |
+| Error findings | 19 |
+| Error findings with a cited fact, approved fact, or active-rule source reference | 12 / 19 (63.16%) |
+| Needs-human-review findings | 30 |
+| Median worker processing time | 550.54 ms |
+| Slowest worker processing time | 5487.33 ms |
 
 ## Historical, measured on the original 40 posts only
 

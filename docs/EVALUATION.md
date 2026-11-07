@@ -22,11 +22,11 @@ fixture tag.
 | False flags | 0 |
 | False negatives | 0 |
 | Failed cases | 0 |
-| Error findings | 20 |
-| Error findings with a cited fact, approved fact, or active-rule source reference | 10 / 20 (50%) |
-| Needs-human-review findings | 18 |
-| Median worker processing time | 102.39 ms |
-| Slowest worker processing time | 172.58 ms |
+| Error findings | 19 |
+| Error findings with a cited fact, approved fact, or active-rule source reference | 12 / 19 (63.16%) |
+| Needs-human-review findings | 30 |
+| Median worker processing time | 550.54 ms |
+| Slowest worker processing time | 5487.33 ms |
 
 No cases were misclassified in this measured run. The sample is synthetic and narrow; these
 scores are not estimates of production accuracy.
