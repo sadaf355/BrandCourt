@@ -1,11 +1,11 @@
 # BrandCourt evaluation
 
-## Historical deterministic baseline (not a variant result)
+## Deterministic regression result: 52 cases, rules tuned on this set, not held-out accuracy
 
 The following measurements came from
 `pytest -s tests/test_analysis_golden.py::test_all_glowserum_seed_posts_run_through_durable_worker -q`
 on the 52-row fictional GlowSerum sample. The test asserted exact equality between expected
-and observed finding labels for every row. It includes 10 clean posts and covers English,
+and observed finding labels for every row. It includes 14 clean posts and covers English,
 Hindi, Marathi, Hinglish, missing alt text, palette, contrast, logo, and an uncertain-OCR
 fixture tag.
 
@@ -27,16 +27,6 @@ fixture tag.
 | Needs-human-review findings | 18 |
 | Median worker processing time | 102.39 ms |
 | Slowest worker processing time | 172.58 ms |
-
-| Finding type | TP | FP | FN | Precision | Recall |
-|---|---:|---:|---:|---:|---:|
-| Banned term | 5 | 0 | 0 | 100% | 100% |
-| Expired fact | 5 | 0 | 0 | 100% | 100% |
-| Missing disclosure | 5 | 0 | 0 | 100% | 100% |
-| Restricted health claim | 1 | 0 | 0 | 100% | 100% |
-| Unsupported superlative | 5 | 0 | 0 | 100% | 100% |
-| Visual | 5 | 0 | 0 | 100% | 100% |
-| Wrong number | 5 | 0 | 0 | 100% | 100% |
 
 No cases were misclassified in this measured run. The sample is synthetic and narrow; these
 scores are not estimates of production accuracy.
@@ -81,6 +71,8 @@ verify that the configured Ollama model is live; a failed check marks that varia
 writes no prediction file. Configure `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, and `OLLAMA_EMBEDDING_MODEL` consistently for
 both the API/worker and the evaluation runner. Both configured Ollama model names must exist at
 the configured endpoint before either model-dependent evaluation is started.
+
+## Historical, measured on the original 40 posts only
 
 ### Code-only: measured in this sprint
 

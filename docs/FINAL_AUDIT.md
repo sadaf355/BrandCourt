@@ -16,9 +16,25 @@ SHA-256 per prediction. The scorer reports exact-match accuracy, micro precision
 false positives/negatives, failures, and worker latency. Failed cases are not silently omitted.
 
 Dataset: 52 fictional GlowSerum posts; SHA-256
-`9801e125d9912525d4562c2ad2901dc0b42ddb12712506c7414b50c6fbdbb6e2`.
+`fb75f41fa6929f1a1c7b97c34828f3eaf345713c5a1ac36d8b9f9753b70b43b1`.
+
+## Deterministic regression result: 52 cases, rules tuned on this set, not held-out accuracy
 
 > **Note on evaluation split:** GC-042 and GC-043 rules were added after the evaluation split was defined, so the numbers are not a clean held-out result.
+
+| Metric | Measured result |
+|---|---:|
+| Cases completed | 52 / 52 |
+| Exact label match | 52 / 52 |
+| Exact-match accuracy | 100% |
+| Micro precision | 100% |
+| Micro recall | 100% |
+| Micro F1 | 100% |
+| False flags | 0 |
+| False negatives | 0 |
+| Failed cases | 0 |
+
+## Historical, measured on the original 40 posts only
 
 | Variant | Completed | Failures | Exact-match accuracy | Precision | Recall | F1 | False positives | False negatives | Median worker ms | Slowest worker ms |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|

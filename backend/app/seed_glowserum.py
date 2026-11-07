@@ -21,7 +21,7 @@ RULES=[
 ('IN-5','Restricted cure and guaranteed-result wording','Cure or guaranteed-result wording for health and skin products must be routed for human/legal review. This is not a legal determination.','term','critical'),
 ('IN-6','AI-generated media declaration','Realistic AI-generated image/video may require a platform label. This is an advisory reminder; check current platform policy.','disclosure','advisory'),
 ]
-async def seed(email: str, sessions=SessionLocal, upload_dir: str | Path | None = None):
+async def seed(email: str, sessions=SessionLocal, upload_dir: str | Path | None = None, skip_creatives: bool = False):
     uploads = Path(upload_dir) if upload_dir is not None else Path(settings.upload_dir)
     async with sessions() as db:
         user=await db.scalar(select(User).where(User.email==email.lower().strip(),User.is_active.is_(True)))
@@ -59,7 +59,7 @@ async def seed(email: str, sessions=SessionLocal, upload_dir: str | Path | None 
             item=await db.scalar(select(ContentItem).where(ContentItem.workspace_id==workspace_id,ContentItem.title==post['title'],ContentItem.campaign==campaign))
             if item: continue
             creative_filename=None; creative_storage_key=None
-            if post['expected_findings']==['visual']:
+            if not skip_creatives and post['expected_findings']==['visual']:
                 try:
                     from PIL import Image, ImageDraw
                     import re
@@ -81,4 +81,8 @@ async def seed(email: str, sessions=SessionLocal, upload_dir: str | Path | None 
         await db.commit()
         print(json.dumps({'workspace_id':workspace_id,'rules_seeded':len(RULES),'evaluation_posts_in_file':len(posts),'new_content_items_created':created,'fictional_data':True},indent=2))
 if __name__=='__main__':
-    parser=argparse.ArgumentParser(); parser.add_argument('--email',required=True); args=parser.parse_args(); asyncio.run(seed(args.email))
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--email',required=True)
+    parser.add_argument('--skip-creatives',action='store_true',help='Skip writing creative image files and leave creative filename/storage key as None')
+    args=parser.parse_args()
+    asyncio.run(seed(args.email, skip_creatives=args.skip_creatives))

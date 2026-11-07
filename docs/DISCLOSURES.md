@@ -26,8 +26,12 @@ The India rules pack is starter guidance for internal review, not legal advice o
 
 ## Landing-page imagery
 
-The landing page contains image assets under `frontend/public/landing/`. Review the source and applicable licence information before replacing, redistributing or reusing those assets outside this repository.
+The landing page contains image assets under `frontend/public/landing/`. Review the source and applicable licence information before replacing, redistributing or reusing those assets outside this repository. The sources and licences of the images in frontend/public/landing/ have not been verified.
 
 ## Product scope
 
 BrandCourt does not connect to, manage or publish content to third-party advertising or social-media platforms. It supports internal review, governance and export workflows only.
+
+## Deployment limitations
+
+The hosted demo runs APP_ENV=staging with local disk storage, so uploaded files are lost on restart; the free-tier API sleeps when idle; the hosted instance runs MODEL_MODE=deterministic so Ollama variants were not exercised there; the fact-expiry scheduler runs only under Docker Compose, not on the hosted API.

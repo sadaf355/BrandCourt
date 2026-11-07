@@ -127,6 +127,42 @@ def test_golden_claims_run_through_durable_worker(
             "not a legal determination" in unsupported["rationale"]
 
 
+def test_seed_glowserum_skip_creatives(
+    workspace_users,
+    test_database,
+    tmp_path,
+):
+    """When skip_creatives is set, creative filename/storage key are None and no files are written."""
+    users, _content_id, workspace_ids = workspace_users
+    upload_dir = tmp_path / "skip-creatives-uploads"
+
+    asyncio.run(
+        seed_glowserum(
+            "admin-2@example.com",
+            sessions=test_database,
+            upload_dir=upload_dir,
+            skip_creatives=True,
+        )
+    )
+
+    async def verify():
+        async with test_database() as session:
+            revisions = (
+                await session.scalars(
+                    select(ContentRevision).where(
+                        ContentRevision.workspace_id == workspace_ids[2]
+                    )
+                )
+            ).all()
+            assert len(revisions) == 52
+            for rev in revisions:
+                assert rev.creative_filename is None
+                assert rev.creative_storage_key is None
+            assert not upload_dir.exists() or not list(upload_dir.rglob("*.png"))
+
+    asyncio.run(verify())
+
+
 def test_all_glowserum_seed_posts_run_through_durable_worker(
     workspace_users,
     test_database,

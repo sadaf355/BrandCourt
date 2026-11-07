@@ -13,6 +13,17 @@
 ## Fallback policy
 If the API, database, OCR engine or local model is unavailable, open `data/sample/demo_fallback.json`. Read its label aloud: **“SIMULATED DEMO FALLBACK — FICTIONAL GLOWSERUM DATA; NOT LIVE CUSTOMER DATA.”** Never describe precomputed fallback findings as live inference. Record the failure and return to the live app if it recovers.
 
+## Seeding a hosted instance
+
+To seed a hosted deployment without generating broken image links:
+
+1. Run the seed script from a local machine with `DATABASE_URL` pointing at the hosted database:
+   ```bash
+   DATABASE_URL="postgresql+asyncpg://user:pass@hosted-host/dbname" python -m app.seed_glowserum --email <admin-email> --skip-creatives
+   ```
+2. The `--skip-creatives` flag ensures seeded rows have `creative_filename` and `creative_storage_key` set to `None`, and no local image files are written.
+3. Image posts must be uploaded live through the web UI so that image files are stored directly in the active environment's configured storage backend.
+
 ## 5–8 user feedback sessions
 These sessions must be run with real participants; they cannot be honestly marked complete by a code-generation task. Obtain consent before recording. Do not use real customer claims or personal data. Suggested participants: 2 creators, 2 reviewers, 1 guideline owner/manager, and 1–3 additional marketers/compliance reviewers.
 
