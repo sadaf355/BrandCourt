@@ -108,7 +108,7 @@ export default function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           ) : (
-            <AppShell user={user} workspaceName={workspaceName} onSignOut={handleSignOut}>
+            <AppShell user={user} workspaceName={workspaceName} onSignOut={handleSignOut} onUserChanged={setUser}>
               <Routes>
                 {/* Modern /app/... hierarchy */}
                 <Route path="/app/dashboard" element={<DashboardPage />} />

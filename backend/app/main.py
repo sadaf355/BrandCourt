@@ -21,13 +21,24 @@ import app.models.entities  # Register ORM models before migrations/tests
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     worker_task: asyncio.Task[None] | None = None
+    demo_task: asyncio.Task[None] | None = None
     if settings.job_worker_enabled:
         from app.core.job_worker import worker_loop
 
         worker_task = asyncio.create_task(worker_loop(), name="brandcourt-review-worker")
+    if settings.demo_login_enabled:
+        from app.services.demo_workspace import run_demo_startup_provisioning
+
+        demo_task = asyncio.create_task(run_demo_startup_provisioning(), name="brandcourt-demo-provisioning")
     try:
         yield
     finally:
+        if demo_task is not None:
+            demo_task.cancel()
+            try:
+                await demo_task
+            except asyncio.CancelledError:
+                pass
         if worker_task is not None:
             worker_task.cancel()
             try:

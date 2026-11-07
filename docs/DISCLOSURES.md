@@ -22,7 +22,7 @@ The frontend uses React, TypeScript, Vite, React Router, TanStack Query, React H
 
 ## Starter policy and demo data
 
-The India rules pack is starter guidance for internal review, not legal advice or a substitute for current regulatory review. GlowSerum/Aurora is fictional demonstration data and must not be represented as a real brand or clinical evidence.
+The India rules pack is starter guidance for internal review, not legal advice or a substitute for current regulatory review. GlowSerum/Aurora is fictional demonstration data and must not be represented as a real brand or clinical evidence. The demo workspace is a shared public workspace with fictional data that anyone can edit.
 
 ## Landing-page imagery
 

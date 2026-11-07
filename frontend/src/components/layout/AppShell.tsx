@@ -20,7 +20,8 @@ import {
   PanelLeftOpen,
   PanelLeft,
 } from 'lucide-react'
-import { User } from '../../types/api'
+import { User, Role } from '../../types/api'
+import { api, setToken } from '../../lib/api'
 import { ThemeToggle } from '../ThemeToggle'
 import { NotificationBell } from './NotificationBell'
 
@@ -28,12 +29,49 @@ interface AppShellProps {
   user: User
   workspaceName?: string
   onSignOut: () => void
+  onUserChanged?: (user: User) => void
   children: React.ReactNode
 }
 
-export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, children }: AppShellProps) {
+export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, onUserChanged, children }: AppShellProps) {
   const location = useLocation()
   const roleName = user.role === 'admin' ? 'Guideline owner' : user.role.charAt(0).toUpperCase() + user.role.slice(1)
+
+  const DEMO_ROLES: { role: Role; label: string }[] = [
+    { role: 'admin', label: 'Admin' },
+    { role: 'creator', label: 'Creator' },
+    { role: 'reviewer', label: 'Reviewer' },
+    { role: 'manager', label: 'Manager' },
+  ]
+
+  const isDemoUser = Boolean(
+    user.email.endsWith('@glowserum.com') ||
+    user.email.endsWith('@demo.local') ||
+    workspaceName.toLowerCase().includes('glowserum demo')
+  )
+
+  const [switchingRole, setSwitchingRole] = useState(false)
+
+  const handleDemoRoleSwitch = async (targetRole: Role) => {
+    if (targetRole === user.role || switchingRole) return
+    setSwitchingRole(true)
+    try {
+      const result = await api<{ access_token: string; user: User }>('/auth/demo-login', {
+        method: 'POST',
+        body: JSON.stringify({ role: targetRole }),
+      })
+      setToken(result.access_token)
+      if (onUserChanged) {
+        onUserChanged(result.user)
+      } else {
+        window.location.reload()
+      }
+    } catch (err) {
+      console.error('Failed to switch demo role:', err)
+    } finally {
+      setSwitchingRole(false)
+    }
+  }
 
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     try {
@@ -211,6 +249,58 @@ export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, c
           </div>
 
           <div className="topbar-actions">
+            {isDemoUser && (
+              <div
+                className="demo-role-switcher"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.2rem',
+                  padding: '0.15rem 0.35rem',
+                  borderRadius: '0.375rem',
+                  border: '1px solid var(--border, #cbd5e1)',
+                  background: 'var(--bg-subtle, #f1f5f9)',
+                  marginRight: '0.35rem',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    color: 'var(--fg-muted, #64748b)',
+                    padding: '0 0.2rem',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Demo:
+                </span>
+                {DEMO_ROLES.map(({ role, label }) => {
+                  const isCurrent = user.role === role
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      disabled={switchingRole}
+                      onClick={() => handleDemoRoleSwitch(role)}
+                      style={{
+                        padding: '0.2rem 0.5rem',
+                        fontSize: '0.72rem',
+                        fontWeight: isCurrent ? 700 : 500,
+                        borderRadius: '0.25rem',
+                        border: 'none',
+                        background: isCurrent ? 'var(--accent, #6366f1)' : 'transparent',
+                        color: isCurrent ? '#ffffff' : 'var(--fg, #0f172a)',
+                        cursor: switchingRole ? 'not-allowed' : 'pointer',
+                        transition: 'background 0.15s ease',
+                      }}
+                      title={`Demo: switch to ${label}`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
             <NotificationBell />
             <ThemeToggle />
             <div

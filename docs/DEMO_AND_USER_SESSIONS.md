@@ -26,18 +26,28 @@ To seed a hosted deployment without generating broken image links:
 
 ## Demo workspace
 
-To seed a repeatable demo workspace with extra roles, conflicting rules, expiring facts, and 5 demo campaign drafts:
+### Automatic path (recommended)
+
+When `DEMO_LOGIN_ENABLED=true` (backend) and `VITE_DEMO_LOGIN_ENABLED=true` (frontend), the demo workspace is provisioned automatically at startup as an unblocked background task:
+1. Visitors click the **GlowSerum Demo** button on `/login` or `/signup` and instantly land in the pre-filled fictional workspace without needing manual seed runs or passwords.
+2. The demo accounts are mapped to `@glowserum.com` addresses (`demo-admin@glowserum.com`, `creator@glowserum.com`, `reviewer@glowserum.com`, `manager@glowserum.com`).
+3. Inside the workspace, users can switch between **Admin**, **Creator**, **Reviewer**, and **Manager** roles using the top-bar role selector.
+4. If `DEMO_RESET_ON_START=true`, only the workspace marked `is_demo` is safely re-initialized on startup.
+
+### Manual CLI path (fallback)
+
+To manually seed a repeatable demo workspace with extra roles, conflicting rules, expiring facts, and demo campaign drafts:
 
 1. Run the seed script with the demo flags:
    ```bash
    python -m app.seed_glowserum --email <admin email> --skip-creatives --demo --demo-password <password>
    ```
-2. Note that images must be uploaded live.
+2. The CLI `--demo` mode shares the exact same provisioning engine (`ensure_demo_workspace`) and creates both `@glowserum.com` and `@demo.local` role accounts idempotently without resetting passwords.
 3. The demo workspace mode provisions:
-   - Three active role accounts: `creator@demo.local`, `reviewer@demo.local`, `manager@demo.local`.
+   - Active role accounts for creator, reviewer, manager, and demo admin.
    - Facts including `FACT-DEMO-EXPIRING` (valid for 3 days) and the expired `FACT-OFFER`.
    - Conflicting rules (`DEMO-CONFLICT-A` and `DEMO-CONFLICT-B`) for Guideline Health testing.
-   - Five drafts under "GlowSerum DEMO" exercising wrong numbers, regional language (Marathi), missing disclosures, clean approved content (locked and snapshotted), and fresh findings.
+   - Six drafts under "GlowSerum DEMO" exercising wrong numbers, regional language (Marathi), missing disclosures, clean approved content (locked and snapshotted), fresh findings, and image intelligence verification (`Demo: image check`).
    - A disputed finding and pending precedent for the Precedent Ledger.
 
 ## 5–8 user feedback sessions

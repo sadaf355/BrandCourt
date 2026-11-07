@@ -10,6 +10,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from app.api.deps import DBSession, CurrentUser, write_audit
 from app.core.config import settings
 from app.models.entities import LoginRateLimit, RefreshToken, User, Workspace
+from app.services.demo_workspace import is_demo_ready, get_demo_workspace_id
 from app.core.security import (
     create_access_token,
     hash_password,
@@ -29,6 +30,8 @@ class LoginRequest(BaseModel):
     workspace_id: str | None = None
 class RefreshRequest(BaseModel):
     refresh_token: str = Field(min_length=32, max_length=256)
+class DemoLoginRequest(BaseModel):
+    role: str = Field(default="admin")
 class CreateUser(BaseModel):
     full_name: str = Field(min_length=2, max_length=160)
     email: EmailStr
@@ -139,6 +142,118 @@ async def login(body: LoginRequest, request: Request, db: DBSession):
         await db.delete(rate_limit)
     if password_needs_rehash(user.password_hash):
         user.password_hash = hash_password(body.password)
+    refresh_token, refresh_record = _new_refresh_token(user)
+    db.add(refresh_record)
+    await db.commit()
+    return token_view(user, refresh_token)
+
+
+@router.get('/auth/demo-status')
+async def demo_status(db: DBSession):
+    enabled = settings.demo_login_enabled
+    ready = False
+    if enabled and is_demo_ready():
+        ws_id = await get_demo_workspace_id(db)
+        if ws_id:
+            ready = True
+    return {'enabled': enabled, 'ready': ready}
+
+
+@router.post('/auth/demo-login')
+async def demo_login(
+    request: Request,
+    db: DBSession,
+    body: DemoLoginRequest | None = None,
+):
+    if not settings.demo_login_enabled:
+        raise HTTPException(404, 'Demo login is disabled.')
+
+    role = (body.role if body and body.role else 'admin').lower().strip()
+    role_email_map = {
+        'admin': settings.demo_admin_email,
+        'creator': 'creator@glowserum.com',
+        'reviewer': 'reviewer@glowserum.com',
+        'manager': 'manager@glowserum.com',
+    }
+    if role not in role_email_map:
+        raise HTTPException(422, 'Role must be one of: admin, creator, reviewer, manager.')
+
+    # Rate limiting keyed by client IP
+    client_ip = request.client.host if request.client else 'unknown'
+    key = hmac.new(
+        settings.secret_key.encode(),
+        f"{client_ip}\0demo-login".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(minutes=settings.login_window_minutes)
+
+    blocked = await db.scalar(
+        select(LoginRateLimit.failures).where(
+            LoginRateLimit.key == key,
+            LoginRateLimit.window_started_at > cutoff,
+            LoginRateLimit.failures >= settings.login_max_failures,
+        )
+    )
+    if blocked:
+        raise HTTPException(
+            429,
+            'Too many sign-in attempts. Try again after the rate-limit window.',
+            headers={'Retry-After': str(settings.login_window_minutes * 60)},
+        )
+
+    # Upsert rate limit attempt
+    values = {'key': key, 'failures': 1, 'window_started_at': now}
+    if db.bind.dialect.name == 'postgresql':
+        insert = postgres_insert(LoginRateLimit).values(**values)
+    else:
+        insert = sqlite_insert(LoginRateLimit).values(**values)
+    expired = LoginRateLimit.window_started_at <= cutoff
+    await db.execute(
+        insert.on_conflict_do_update(
+            index_elements=[LoginRateLimit.key],
+            set_={
+                'failures': case(
+                    (expired, 1),
+                    else_=LoginRateLimit.failures + 1,
+                ),
+                'window_started_at': case(
+                    (expired, now),
+                    else_=LoginRateLimit.window_started_at,
+                ),
+            },
+        )
+    )
+    await db.commit()
+
+    if not is_demo_ready():
+        raise HTTPException(503, 'Demo is preparing, try again in a minute')
+
+    demo_ws_id = await get_demo_workspace_id(db)
+    if not demo_ws_id:
+        raise HTTPException(503, 'Demo is preparing, try again in a minute')
+
+    demo_ws = await db.get(Workspace, demo_ws_id)
+    if not demo_ws or not dict(demo_ws.settings or {}).get('is_demo'):
+        raise HTTPException(503, 'Demo is preparing, try again in a minute')
+
+    target_email = role_email_map[role]
+    user = await db.scalar(
+        select(User).where(
+            User.workspace_id == demo_ws_id,
+            User.email == target_email,
+            User.is_active.is_(True),
+        )
+    )
+    if not user:
+        raise HTTPException(503, 'Demo is preparing, try again in a minute')
+
+    await write_audit(
+        db,
+        user,
+        'auth.demo_login',
+        {'role': role, 'email': user.email, 'workspace_id': user.workspace_id},
+    )
     refresh_token, refresh_record = _new_refresh_token(user)
     db.add(refresh_record)
     await db.commit()
