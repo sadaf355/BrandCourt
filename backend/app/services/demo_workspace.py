@@ -157,6 +157,7 @@ async def run_demo_startup_provisioning() -> None:
     try:
         await ensure_demo_workspace(
             sessions=SessionLocal,
+            skip_creatives=True,
             reset_on_start=settings.demo_reset_on_start,
         )
         set_demo_ready(True)

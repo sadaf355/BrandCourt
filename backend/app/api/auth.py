@@ -153,10 +153,22 @@ async def login(body: LoginRequest, request: Request, db: DBSession):
 async def demo_status(db: DBSession):
     enabled = settings.demo_login_enabled
     ready = False
-    if enabled and is_demo_ready():
-        ws_id = await get_demo_workspace_id(db)
-        if ws_id:
+    if enabled:
+        if is_demo_ready():
             ready = True
+        else:
+            ws_id = await get_demo_workspace_id(db)
+            if ws_id:
+                admin_user = await db.scalar(
+                    select(User.id).where(
+                        User.workspace_id == ws_id,
+                        User.email == settings.demo_admin_email,
+                        User.is_active.is_(True),
+                    ).limit(1)
+                )
+                if admin_user:
+                    set_demo_ready(True)
+                    ready = True
     return {'enabled': enabled, 'ready': ready}
 
 
@@ -226,6 +238,24 @@ async def demo_login(
         )
     )
     await db.commit()
+
+    if not is_demo_ready():
+        demo_ws_id = await get_demo_workspace_id(db)
+        if demo_ws_id:
+            admin_user = await db.scalar(
+                select(User.id).where(
+                    User.workspace_id == demo_ws_id,
+                    User.email == settings.demo_admin_email,
+                    User.is_active.is_(True),
+                ).limit(1)
+            )
+            if admin_user:
+                set_demo_ready(True)
+        else:
+            from app.services.demo_workspace import _provisioning_lock, run_demo_startup_provisioning
+            import asyncio
+            if not _provisioning_lock.locked():
+                asyncio.create_task(run_demo_startup_provisioning())
 
     if not is_demo_ready():
         raise HTTPException(503, 'Demo is preparing, try again in a minute')

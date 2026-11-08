@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     job_heartbeat_seconds: int = Field(default=15, ge=1, le=600)
     job_max_attempts: int = Field(default=3, ge=1, le=20)
     job_timeout_seconds: int = Field(default=900, ge=1, le=86400)
-    demo_login_enabled: bool = False
+    demo_login_enabled: bool = True
     demo_admin_email: str = "demo-admin@glowserum.com"
     demo_reset_on_start: bool = False
     model_mode: str = "deterministic"
