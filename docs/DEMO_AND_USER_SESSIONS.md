@@ -75,3 +75,39 @@ Record for each session: participant role (no name required), task completion, t
 - [ ] Record a real demo only after the live flow passes; store consent and avoid secrets/personal data in the recording.
 
 No deployment, participant session, or video recording is considered completed until the team performs and documents it in the target environment.
+
+## Round 3 submission recording plan
+
+The required submission recording is **3 minutes**, followed by a separate **1-minute precedent-effect segment**. This repository does not contain a recording; record these against the live app and retain the original capture.
+
+### Three-minute walkthrough
+- **0:00–0:25:** State the problem and show the fictional GlowSerum workspace.
+- **0:25–1:05:** Run a post through Claim Court and open a finding with its cited fact/rule evidence.
+- **1:05–1:45:** Use Suggest fix; show the proposed text, verification status, changed claims, CTA retention, similarity, and a rejected candidate if available.
+- **1:45–2:20:** Show Guideline Health with one concrete conflict/vague-rule wording proposal.
+- **2:20–3:00:** Show reviewer approval gate, audit history and disclosures. State known limits plainly.
+
+### One-minute precedent segment
+- **0:00–0:15:** Run a repeated false-flag post before the precedent exists and show the finding.
+- **0:15–0:35:** Save the precedent, obtain manager approval, and show its approved scope.
+- **0:35–0:55:** Re-run the repeated post and show the matching precedent suggestion attached to the finding.
+- **0:55–1:00:** Explicitly show that Critical findings remain visible and are not silenced or downgraded.
+
+## Manual versus BrandCourt timing study — 10 posts
+
+Run the same 10 posts through both processes using the same trained reviewer(s). Start the timer at first opening the post and stop when a review decision and rationale are recorded. Record all pauses and exclude them consistently from both methods. Do not substitute API worker latency for human task time.
+
+| Post ID | Manual seconds | BrandCourt seconds | Manual notes | BrandCourt notes |
+|---|---:|---:|---|---|
+| P01 | | | | |
+| P02 | | | | |
+| P03 | | | | |
+| P04 | | | | |
+| P05 | | | | |
+| P06 | | | | |
+| P07 | | | | |
+| P08 | | | | |
+| P09 | | | | |
+| P10 | | | | |
+
+Report median and min–max range for each method, plus paired per-post differences. Include reviewer role, number of reviewers, environment, date, and whether a post required image review. No timing measurements were made during this code update; leave the table blank until collected rather than fabricating values.

@@ -58,7 +58,7 @@ export function NewReviewPage() {
 
   // Client-side quick language heuristic
   const isHindiScript = /[\u0900-\u097F]/.test(captionText || '')
-  const detectedLanguage = isHindiScript ? 'Hindi (Devanagari)' : 'English'
+  const detectedLanguage = isHindiScript ? 'Hindi/Marathi (Devanagari script)' : 'English or other Latin-script text'
 
   const handleCreativeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -120,6 +120,10 @@ export function NewReviewPage() {
         </p>
       </div>
 
+      {isHindiScript && <div role="status" aria-live="polite" className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+        <strong>Limited language support:</strong> Devanagari content may include Hindi or Marathi. Automated language and claim checks have limited coverage for Marathi and mixed-language phrasing. Please have a fluent reviewer verify nuance, idioms and claim meaning before approval.
+      </div>}
+
       <form onSubmit={handleSubmit(onSubmit)}>
         <div
           style={{
@@ -133,10 +137,11 @@ export function NewReviewPage() {
           {/* Title & Channel */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem' }}>
+              <label htmlFor="review-title" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem' }}>
                 Content Title *
               </label>
               <input
+                id="review-title"
                 {...register('title')}
                 placeholder="e.g. Festive Launch Instagram Reel"
                 style={{
@@ -153,10 +158,11 @@ export function NewReviewPage() {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem' }}>
+              <label htmlFor="review-channel" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem' }}>
                 Target Channel *
               </label>
               <select
+                id="review-channel"
                 {...register('channel')}
                 style={{
                   width: '100%',
@@ -182,10 +188,11 @@ export function NewReviewPage() {
 
           {/* Campaign */}
           <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem' }}>
+            <label htmlFor="review-campaign" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem' }}>
               Campaign Name (Optional)
             </label>
             <input
+              id="review-campaign"
               {...register('campaign')}
               placeholder="e.g. Q4 Festive Radiance"
               style={{
@@ -203,12 +210,13 @@ export function NewReviewPage() {
           {/* Caption Text Area */}
           <div style={{ marginBottom: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Caption / Marketing Copy *</label>
+              <label htmlFor="review-caption" style={{ fontSize: '0.85rem', fontWeight: 600 }}>Caption / Marketing Copy *</label>
               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted, #94a3b8)' }}>
                 Detected Language: <strong>{detectedLanguage}</strong>
               </div>
             </div>
             <textarea
+              id="review-caption"
               {...register('caption')}
               rows={5}
               placeholder="Write or paste marketing copy here..."
@@ -311,10 +319,11 @@ export function NewReviewPage() {
 
           {/* Alt text */}
           <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem' }}>
+            <label htmlFor="review-alt-text" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem' }}>
               Accessibility Alt Text
             </label>
             <input
+              id="review-alt-text"
               {...register('alt_text')}
               placeholder="Describe creative image for visually impaired readers..."
               style={{

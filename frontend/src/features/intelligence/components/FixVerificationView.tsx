@@ -82,6 +82,14 @@ export function FixVerificationView() {
           </div>
 
           <button
+            type="button"
+            onClick={() => setCandidateText('GlowSerum cures eczema and guarantees results. Shop now.')}
+            className="w-full py-2 rounded-lg text-xs font-semibold border border-rose-500/40 text-rose-300 hover:bg-rose-500/10"
+          >
+            Load Critical-rejection example
+          </button>
+
+          <button
             onClick={() => verifyMutation.mutate()}
             disabled={!candidateText.trim() || verifyMutation.isPending}
             className="w-full py-2.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
@@ -155,6 +163,18 @@ export function FixVerificationView() {
                   </span>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-lg border border-slate-800 bg-slate-900">
+                  <span className="text-slate-400 block mb-1">Text similarity:</span>
+                  <strong className="text-white">{verificationResult.embedding_similarity ?? verificationResult.similarity ?? 'Not available'}</strong>
+                </div>
+                <div className="p-3 rounded-lg border border-slate-800 bg-slate-900">
+                  <span className="text-slate-400 block mb-1">Claims changed:</span>
+                  <strong className="text-white">{(verificationResult.changed_claims || []).length}</strong>
+                </div>
+              </div>
+              {(verificationResult.changed_claims || []).length > 0 && <div className="p-3 rounded-lg border border-slate-800 bg-slate-900 text-xs"><b className="text-slate-200">Changed claims</b><ul className="mt-1 list-disc pl-5 text-slate-400">{verificationResult.changed_claims.map((claim: string, i: number) => <li key={i}>{claim}</li>)}</ul></div>}
 
               {/* Detected Blockers if any */}
               {verificationResult.new_blocking_findings && verificationResult.new_blocking_findings.length > 0 && (

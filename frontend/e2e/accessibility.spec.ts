@@ -3,9 +3,11 @@
  *
  * Run with: npx playwright test e2e/accessibility.spec.ts
  */
+import { createRequire } from 'node:module'
 import { test, expect } from '@playwright/test'
 
 // Locate axe-core source file
+const require = createRequire(import.meta.url)
 const axePath = require.resolve('axe-core')
 
 const CORE_ROUTES = [
@@ -62,11 +64,11 @@ test.describe('Performance check with 100 findings', () => {
   test('findings view renders under 3s with 100 findings', async ({ page }) => {
     // Generate 100 synthetic findings in client memory/mock
     await page.goto('/app/reviews')
+    await page.waitForLoadState('domcontentloaded')
 
-    const startTime = await page.evaluate(() => performance.now())
-
-    // Inject 100 findings into DOM or container if test container exists
-    await page.evaluate(() => {
+    // Measure actual DOM render + layout duration for 100 findings inside the browser
+    const duration = await page.evaluate(() => {
+      const start = performance.now()
       const container = document.createElement('div')
       container.id = 'benchmark-findings-container'
       for (let i = 0; i < 100; i++) {
@@ -76,9 +78,9 @@ test.describe('Performance check with 100 findings', () => {
         container.appendChild(item)
       }
       document.body.appendChild(container)
+      void container.getBoundingClientRect()
+      return performance.now() - start
     })
-
-    const duration = await page.evaluate((start) => performance.now() - start, startTime)
 
     // Rendering 100 items should complete well within 3000ms
     expect(duration).toBeLessThan(3000)

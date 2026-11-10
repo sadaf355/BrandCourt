@@ -92,6 +92,7 @@ export type ClaimFinding = {
     cta: string
     claims_changed: string[]
     safe: boolean
+    embedding_similarity?: number
   }
   decisions?: FindingDecision[]
   created_at: string
@@ -450,6 +451,9 @@ export type GuidelineHealthIssue = {
   accepted?: boolean
   edited_text?: string
   ignored?: boolean
+  issue_key?: string
+  analysis_status?: string
+  model_rubric?: Record<string, unknown>
 }
 
 export type GuidelineHealthReport = {

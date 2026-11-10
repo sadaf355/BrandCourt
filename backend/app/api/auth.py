@@ -10,7 +10,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from app.api.deps import DBSession, CurrentUser, write_audit
 from app.core.config import settings
 from app.models.entities import LoginRateLimit, RefreshToken, User, Workspace
-from app.services.demo_workspace import is_demo_ready, get_demo_workspace_id
+from app.services.demo_workspace import is_demo_ready, set_demo_ready, get_demo_workspace_id
 from app.core.security import (
     create_access_token,
     hash_password,

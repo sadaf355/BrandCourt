@@ -61,6 +61,7 @@ def precedent_suggestion(finding: Any, precedent: Any, score: float) -> dict[str
         "rule_id": precedent.rule_id,
         "channel": precedent.channel,
         "reason": precedent.reason,
+        "pattern_text": precedent.pattern_text,
         "similarity": round(score, 4),
         "suggested_severity": None if critical else "advisory",
         "requires_reviewer_confirmation": not critical,

@@ -264,7 +264,7 @@ cd backend
 python -m pytest -s tests/test_analysis_golden.py::test_all_glowserum_seed_posts_run_through_durable_worker -q
 ```
 
-*For detailed evaluation metrics, historical comparisons, and methodology, see [docs/EVALUATION.md](docs/EVALUATION.md) and [docs/FINAL_AUDIT.md](docs/FINAL_AUDIT.md).*
+*For detailed evaluation metrics, historical comparisons, and methodology, see [docs/EVALUATION.md](docs/EVALUATION.md).*
 
 ---
 

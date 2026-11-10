@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { apiClient } from '../../../lib/api'
 import {
   Check,
   Edit2,
@@ -35,6 +36,24 @@ export function FindingCard({
   const [showHistory, setShowHistory] = useState(false)
   const [disputeOpen, setDisputeOpen] = useState(false)
   const [disputeNote, setDisputeNote] = useState('')
+  const [fixBusy, setFixBusy] = useState(false)
+  const [fixResult, setFixResult] = useState<any>(null)
+  const [precedents, setPrecedents] = useState<any[]>([])
+  const [precedentBusy, setPrecedentBusy] = useState(false)
+  const [precedentError, setPrecedentError] = useState('')
+
+  const loadPrecedents = async () => {
+    setPrecedentBusy(true); setPrecedentError('')
+    try { const result = await apiClient.getPrecedentSuggestions(finding.id); setPrecedents(result.suggestions || []) }
+    catch (error) { setPrecedentError(error instanceof Error ? error.message : 'Could not load precedents') }
+    finally { setPrecedentBusy(false) }
+  }
+  const runSuggestFix = async () => {
+    setFixBusy(true); setFixResult(null)
+    try { setFixResult(await apiClient.suggestFindingFix(finding.id)) }
+    catch (error) { setFixResult({ accepted: false, rejection_reason: error instanceof Error ? error.message : 'Verification failed' }) }
+    finally { setFixBusy(false) }
+  }
 
   const isSafeFix = finding.intent_preserved ? finding.intent_preserved.safe : true
 
@@ -147,6 +166,28 @@ export function FindingCard({
         )}
       </div>
 
+      <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.stopPropagation()}>
+        <button type="button" onClick={runSuggestFix} disabled={fixBusy} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white disabled:opacity-50">{fixBusy ? 'Verifying…' : 'Suggest fix'}</button>
+        <button type="button" onClick={loadPrecedents} disabled={precedentBusy} className="px-3 py-1.5 rounded-lg text-xs border border-slate-600 text-slate-200 disabled:opacity-50">{precedentBusy ? 'Finding precedents…' : 'Show precedent suggestions'}</button>
+      </div>
+      {fixResult && <div className="mb-3 p-3 rounded-lg border border-slate-700 bg-slate-800/70 text-xs" onClick={(e) => e.stopPropagation()}>
+        <strong className={fixResult.accepted ? 'text-emerald-400' : 'text-amber-400'}>{fixResult.accepted ? 'Fix verified — safe to suggest' : 'Fix not approved'}</strong>
+        {fixResult.suggested_fix && <p className="mt-2 text-slate-200">{fixResult.suggested_fix}</p>}
+        {fixResult.rejection_reason && <p className="mt-1 text-slate-400">{fixResult.rejection_reason}</p>}
+        {fixResult.verification && <div className="mt-2 space-y-1 text-slate-400">
+          <p>Intent preserved: <b>{fixResult.verification.intent_preserved ? 'Yes' : 'No'}</b> · Similarity: <b>{fixResult.verification.embedding_similarity ?? fixResult.verification.similarity ?? 'Not available'}</b></p>
+          <p>Claims changed: <b>{(fixResult.verification.changed_claims || []).length}</b>{(fixResult.verification.changed_claims || []).length > 0 ? ` — ${(fixResult.verification.changed_claims || []).join('; ')}` : ' — none detected'}</p>
+          <p>Call to action kept: <b>{fixResult.verification.call_to_action_preserved ? 'Yes' : 'No / not preserved'}</b></p>
+          {(fixResult.verification.new_blocking_findings || []).length > 0 && <div role="alert" className="mt-2 rounded border border-rose-500/40 bg-rose-950/40 p-2 text-rose-200"><b>Rejected: a new Critical finding was raised.</b><ul className="mt-1 list-disc pl-5">{fixResult.verification.new_blocking_findings.map((item: any, index: number) => <li key={item.finding_id || index}>{item.claim_text}: {item.rationale}</li>)}</ul></div>}
+        </div>}
+      </div>}
+      {precedentError && <p className="text-xs text-rose-400 mb-2">{precedentError}</p>}
+      {precedents.length > 0 && <div className="mb-3 space-y-2" onClick={(e) => e.stopPropagation()}>{precedents.map((item) => <div key={item.precedent_id} className="p-3 rounded-lg border border-slate-700 bg-slate-800/60 text-xs">
+        <p className="text-slate-100 font-medium">{item.pattern_text}</p><p className="text-slate-400 mt-1">{item.reason} · Similarity {Math.round(item.similarity * 100)}%</p>
+        <p className="text-amber-300 mt-1">Reviewer confirmation required. Critical findings cannot be downgraded.</p>
+        <button type="button" disabled={finding.severity === 'critical' || finding.state !== 'open'} onClick={async () => { try { await apiClient.confirmPrecedentSuggestion(finding.id, item.precedent_id); await loadPrecedents() } catch (error) { setPrecedentError(error instanceof Error ? error.message : 'Confirmation failed') } }} className="mt-2 px-2.5 py-1 rounded bg-emerald-700 text-white disabled:opacity-40">Reviewer confirm</button>
+      </div>)}</div>}
+
       {/* Suggested Fix and Intent Preserved */}
       {finding.suggested_fix && (
         <div
@@ -222,6 +263,7 @@ export function FindingCard({
               <div>
                 <strong>CTA preserved:</strong> {finding.intent_preserved.cta}
               </div>
+              {finding.intent_preserved.embedding_similarity !== undefined && <div><strong>Similarity:</strong> {Math.round(finding.intent_preserved.embedding_similarity * 100)}%</div>}
               {finding.intent_preserved.claims_changed.length > 0 && (
                 <div>
                   <strong>Changes:</strong> {finding.intent_preserved.claims_changed.join(', ')}

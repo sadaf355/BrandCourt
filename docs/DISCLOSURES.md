@@ -35,3 +35,17 @@ BrandCourt does not connect to, manage or publish content to third-party adverti
 ## Deployment limitations
 
 The hosted demo runs APP_ENV=staging with local disk storage, so uploaded files are lost on restart; the free-tier API sleeps when idle; the hosted instance runs MODEL_MODE=deterministic so Ollama variants were not exercised there; the fact-expiry scheduler runs only under Docker Compose, not on the hosted API.
+
+## Round 3 — additional evaluation and product limitations (9 November 2026)
+
+- **Fix suggestions:** cure, guarantee and superlative phrase substitutions are deterministic heuristics. They are suggestions only. Every proposed candidate is re-run through the review engine; a new Critical finding or failed intent check rejects it. This does not guarantee legal compliance or semantic equivalence.
+- **Intent score:** similarity is produced by a local hashing/trigram representation and CTA-retention heuristic. It is not a calibrated semantic score and should not be presented as a probability.
+- **Evaluation data:** the 52 GlowSerum posts are fictional sample data with historical exposure to rule development. Historical golden-test accuracy is not a clean holdout result. Fresh independent posts are required for a defensible generalisation claim.
+- **Ollama:** local-model evaluation was not executed in this delivery environment because no Ollama service/model was reachable. Do not claim live model accuracy until the three variants complete on the same frozen dataset.
+- **Images:** expected visual labels are not image evidence. Five actual creative image files must be run through the configured upload, OCR and image-analysis path before image performance is reported.
+- **Language coverage:** Hindi/Marathi and mixed-language content may have limited automated coverage. The UI asks for a fluent human review; no broad multilingual accuracy guarantee is made.
+- **Workflow scope:** comment resolving, email invitations, member removal and workspace deletion are not exposed as complete end-to-end product actions. Member creation and role changes are distinct from email invitations.
+- **Analytics:** channel/creator/week aggregations and approval-duration calculations are based on stored workspace records. Where no real approval history exists, seeded reference values may be shown and must not be mistaken for measured operational performance. Team-level analytics are not supported by the current data model.
+- **Accessibility and speed:** axe-core is a dependency, not evidence of a completed audit. The 15-second text and 30-second image targets have not been validated in production-like load tests.
+- **Human evidence:** no user sessions, manual-vs-product timing study, or demo video was generated as part of this code update. Do not represent these as completed research.
+- **Competitor review:** the competitor pack is based on public vendor materials and is not a hands-on comparison or independent feature verification.

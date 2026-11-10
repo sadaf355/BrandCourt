@@ -18,21 +18,24 @@ export function GuidelineHealthPage() {
   const qc = useQueryClient()
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editText, setEditText] = useState('')
-  const [ignoredList, setIgnoredList] = useState<number[]>([])
-  const [acceptedList, setAcceptedList] = useState<number[]>([])
+  const [ignoredKeys, setIgnoredKeys] = useState<string[]>([])
+  const [acceptedKeys, setAcceptedKeys] = useState<string[]>([])
 
   const { data: healthReport, isLoading, isError, refetch } = useQuery({
     queryKey: ['guideline-health'],
     queryFn: () => apiClient.getGuidelineHealth(),
   })
 
-  const updateRuleMutation = useMutation({
-    mutationFn: ({ ruleId, newDescription }: { ruleId: string; newDescription: string }) =>
-      apiClient.updateRule(ruleId, { description: newDescription }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['rules'] })
+  const decisionMutation = useMutation({
+    mutationFn: (data: { issue_key: string; rule_id?: string; issue_type?: string; action: 'accept' | 'edit' | 'ignore'; edited_wording?: string }) => apiClient.decideGuidelineIssue(data),
+    onSuccess: (_result, variables) => {
+      if (variables.action === 'ignore') {
+        setIgnoredKeys((prev) => (prev.includes(variables.issue_key) ? prev : [...prev, variables.issue_key]))
+      } else {
+        setAcceptedKeys((prev) => (prev.includes(variables.issue_key) ? prev : [...prev, variables.issue_key]))
+      }
       qc.invalidateQueries({ queryKey: ['guideline-health'] })
-      showToast('Rule definition updated with improved wording.', 'success')
+      showToast('Guideline decision saved.', 'success')
       setEditingIndex(null)
     },
     onError: (err: Error) => showToast(err.message, 'error'),
@@ -60,17 +63,13 @@ export function GuidelineHealthPage() {
     )
   }
 
-  const issues = (healthReport?.issues || []).filter((_, idx) => !ignoredList.includes(idx))
+  const issues = (healthReport?.issues || []).filter(
+    (issue) => !issue.issue_key || !ignoredKeys.includes(issue.issue_key)
+  )
 
-  const handleAcceptSuggestion = (issue: GuidelineHealthIssue, idx: number) => {
-    if (issue.rule_id) {
-      updateRuleMutation.mutate({
-        ruleId: issue.rule_id,
-        newDescription: issue.suggestion,
-      })
-    }
-    setAcceptedList((prev) => [...prev, idx])
-    showToast('Accepted suggested wording.', 'success')
+  const handleAcceptSuggestion = (issue: GuidelineHealthIssue) => {
+    if (issue.issue_key) decisionMutation.mutate({ issue_key: issue.issue_key, rule_id: issue.rule_id, issue_type: issue.type, action: 'accept', edited_wording: issue.suggestion })
+    else showToast('This issue cannot be saved because its identifier is missing.', 'error')
   }
 
   const handleStartEdit = (issue: GuidelineHealthIssue, idx: number) => {
@@ -78,20 +77,15 @@ export function GuidelineHealthPage() {
     setEditText(issue.suggestion)
   }
 
-  const handleSaveEdit = (issue: GuidelineHealthIssue, idx: number) => {
-    if (issue.rule_id) {
-      updateRuleMutation.mutate({
-        ruleId: issue.rule_id,
-        newDescription: editText,
-      })
-    }
-    setAcceptedList((prev) => [...prev, idx])
-    setEditingIndex(null)
+  const handleSaveEdit = (issue: GuidelineHealthIssue) => {
+    if (issue.issue_key) decisionMutation.mutate({ issue_key: issue.issue_key, rule_id: issue.rule_id, issue_type: issue.type, action: 'edit', edited_wording: editText })
+    else showToast('This issue cannot be saved because its identifier is missing.', 'error')
   }
 
   const handleIgnore = (idx: number) => {
-    setIgnoredList((prev) => [...prev, idx])
-    showToast('Suggestion dismissed from active list.', 'info')
+    const issue = issues[idx]
+    if (issue?.issue_key) decisionMutation.mutate({ issue_key: issue.issue_key, rule_id: issue.rule_id, issue_type: issue.type, action: 'ignore' })
+    else showToast('This issue cannot be saved because its identifier is missing.', 'error')
   }
 
   return (
@@ -133,7 +127,7 @@ export function GuidelineHealthPage() {
       ) : (
         <div className="space-y-4">
           {issues.map((issue, idx) => {
-            const isAccepted = acceptedList.includes(idx)
+            const isAccepted = Boolean(issue.issue_key && acceptedKeys.includes(issue.issue_key))
             const isEditing = editingIndex === idx
 
             return (
@@ -171,6 +165,7 @@ export function GuidelineHealthPage() {
 
                 <h3 className="text-base font-semibold text-white mb-1.5">{issue.title}</h3>
                 <p className="text-xs text-slate-300 leading-relaxed mb-4">{issue.explanation}</p>
+                {issue.analysis_status && <p className="text-[11px] text-slate-500 mb-2">Analysis: {issue.analysis_status}</p>}
 
                 {/* Suggested Wording Box */}
                 <div className="p-3.5 rounded-lg border border-slate-700/80 bg-slate-800/60 mb-4">
@@ -195,8 +190,8 @@ export function GuidelineHealthPage() {
                           Cancel
                         </button>
                         <button
-                          onClick={() => handleSaveEdit(issue, idx)}
-                          disabled={updateRuleMutation.isPending}
+                          onClick={() => handleSaveEdit(issue)}
+                          disabled={decisionMutation.isPending}
                           className="px-3.5 py-1 rounded text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white"
                         >
                           Save & Apply
@@ -228,8 +223,8 @@ export function GuidelineHealthPage() {
                     </button>
 
                     <button
-                      onClick={() => handleAcceptSuggestion(issue, idx)}
-                      disabled={updateRuleMutation.isPending}
+                      onClick={() => handleAcceptSuggestion(issue)}
+                      disabled={decisionMutation.isPending}
                       className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center gap-1 shadow-sm"
                     >
                       <CheckCircle2 size={13} />

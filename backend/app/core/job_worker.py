@@ -268,7 +268,13 @@ async def process_next_job(
 async def worker_loop() -> None:
     worker_id = f"{socket.gethostname()}-{uuid4().hex[:12]}"
     while True:
-        if not await process_next_job(worker_id=worker_id):
+        try:
+            if not await process_next_job(worker_id=worker_id):
+                await asyncio.sleep(settings.job_poll_seconds)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Review job worker iteration failed; retrying after poll interval.")
             await asyncio.sleep(settings.job_poll_seconds)
 
 

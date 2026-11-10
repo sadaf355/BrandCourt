@@ -35,7 +35,7 @@ from app.models.entities import (
 from app.core.job_queue import enqueue_review_job
 from app.core.job_worker import process_next_job
 from app.api.workflow import change_workflow, decide_finding, StateInput, DecisionInput
-from app.api.intelligence import create_precedent, PrecedentInput
+from app.api.intelligence import create_precedent, approve_precedent, PrecedentInput
 
 logger = logging.getLogger(__name__)
 
@@ -361,6 +361,35 @@ async def ensure_demo_workspace(
                         confirmed_by=admin_user.id,
                     ))
 
+            # Additional planted guideline-health proof cases: four known conflicts
+            # and four deliberately vague rules. All are fictional demo-only guidelines.
+            planted_conflicts = [
+                ("DEMO-CONFLICT-C", "Always include a price in paid-ad headlines", "Every paid-ad headline must display the current approved price."),
+                ("DEMO-CONFLICT-D", "Never show prices in paid-ad headlines", "Do not display any price in a paid-ad headline."),
+                ("DEMO-CONFLICT-E", "Use only English on packaging", "All packaging copy must be written only in English."),
+                ("DEMO-CONFLICT-F", "Packaging must be bilingual", "Every packaging panel must contain both English and Hindi copy."),
+                ("DEMO-CONFLICT-G", "Always include a CTA in Instagram captions", "Every Instagram caption must end with a call to action."),
+                ("DEMO-CONFLICT-H", "Never include a CTA in Instagram captions", "Instagram captions must not contain a call to action."),
+            ]
+            for code, title, text in planted_conflicts:
+                if not await db.scalar(select(Rule.id).where(Rule.workspace_id == workspace_id, Rule.code == code, Rule.version == 1)):
+                    db.add(Rule(workspace_id=workspace_id, code=code, title=title, text=text,
+                        type="brand_voice", severity="advisory", channels=["paid_ad"] if "paid-ad" in text else (["packaging"] if "packaging" in text else ["instagram"]),
+                        status="active", version=1, source_ref="Planted Phase 4 guideline-health conflict test case",
+                        created_by=admin_user.id, confirmed_by=admin_user.id))
+            planted_vague = [
+                ("DEMO-VAGUE-1", "Use appropriate product language", "Use appropriate product language in every campaign."),
+                ("DEMO-VAGUE-2", "Maintain good quality visuals", "Maintain good quality visuals across social channels."),
+                ("DEMO-VAGUE-3", "Keep the tone professional", "Keep the tone professional in all customer-facing copy."),
+                ("DEMO-VAGUE-4", "Use suitable benefit descriptions", "Use suitable benefit descriptions on product pages."),
+            ]
+            for code, title, text in planted_vague:
+                if not await db.scalar(select(Rule.id).where(Rule.workspace_id == workspace_id, Rule.code == code, Rule.version == 1)):
+                    db.add(Rule(workspace_id=workspace_id, code=code, title=title, text=text,
+                        type="brand_voice", severity="advisory", channels=[], status="active", version=1,
+                        source_ref="Planted Phase 4 guideline-health vague-rule test case",
+                        created_by=admin_user.id, confirmed_by=admin_user.id))
+
             # 6. Facts (including expired and expiring)
             facts = [
                 ("FACT-RESULTS", "GlowSerum hydration duration", "4", "weeks", None, "2026-12-31T23:59:59+00:00", "Fictional product substantiation file v1"),
@@ -630,7 +659,7 @@ async def ensure_demo_workspace(
                         )
                     )
                     if not existing_precedent:
-                        await create_precedent(
+                        created_precedent = await create_precedent(
                             PrecedentInput(
                                 finding_id=finding_a.id,
                                 channel="instagram",
@@ -640,6 +669,16 @@ async def ensure_demo_workspace(
                             reviewer_u,
                             db,
                         )
+                        existing_precedent = created_precedent["id"]
+                    # The demo workspace explicitly shows the complete reviewer →
+                    # owner approval lifecycle. Production precedents remain pending
+                    # until a manager/admin approves them in the ledger.
+                    demo_precedent = await db.scalar(select(Precedent).where(
+                        Precedent.id == existing_precedent,
+                        Precedent.workspace_id == workspace_id,
+                    ))
+                    if demo_precedent and demo_precedent.status == "pending" and manager_u:
+                        await approve_precedent(demo_precedent.id, manager_u, db)
 
             set_demo_ready(True)
 

@@ -428,6 +428,18 @@ export const apiClient = {
     if (USE_MOCK) return mockService.getGuidelineHealth()
     return api<GuidelineHealthReport>('/guideline-health')
   },
+  async decideGuidelineIssue(data: { issue_key: string; rule_id?: string; issue_type?: string; action: 'accept' | 'edit' | 'ignore'; edited_wording?: string }): Promise<any> {
+    return api('/guideline-health/decisions', { method: 'POST', body: JSON.stringify(data) })
+  },
+  async getPrecedentSuggestions(findingId: string): Promise<{ finding_id: string; suggestions: Array<{ precedent_id: string; pattern_text: string; reason: string; similarity: number; message: string }> }> {
+    return api(`/findings/${findingId}/precedent-suggestions`)
+  },
+  async confirmPrecedentSuggestion(findingId: string, precedentId: string): Promise<any> {
+    return api(`/findings/${findingId}/precedent-suggestions/${precedentId}/confirm`, { method: 'POST' })
+  },
+  async suggestFindingFix(findingId: string): Promise<any> {
+    return api(`/findings/${findingId}/suggest-fix`, { method: 'POST' })
+  },
   async listPrecedents(): Promise<PrecedentItem[]> {
     if (USE_MOCK) return mockService.listPrecedents()
     return api<PrecedentItem[]>('/precedents')

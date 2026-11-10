@@ -27,10 +27,20 @@ test.describe('Keyboard-only navigation flow', () => {
   })
 
   test('keyboard navigation through sidebar and reviews', async ({ page }) => {
-    // Visit app dashboard
-    await page.goto('/app/reviews')
+    const ts = Date.now()
+    await page.goto('/signup')
+    await page.getByLabel('Workspace name').fill(`KeyboardNav-${ts}`)
+    await page.getByLabel('Your full name').fill('Keyboard Tester')
+    await page.getByLabel('Work email').fill(`kbd-${ts}@example.com`)
+    await page.getByPlaceholder('At least 8 characters').fill('KeyboardPass#2026!')
+    await page.getByRole('button', { name: /Create workspace/ }).click()
+    await expect(page.getByRole('heading', { name: 'Insights dashboard' })).toBeVisible({ timeout: 20000 })
 
-    // Tab into main navigation or buttons
+    // Visit reviews page
+    await page.goto('/app/reviews')
+    await expect(page.getByRole('heading', { name: 'Content Reviews' })).toBeVisible()
+
+    // Tab into sidebar / page navigation buttons
     await page.keyboard.press('Tab')
     await page.keyboard.press('Tab')
     await page.keyboard.press('Tab')

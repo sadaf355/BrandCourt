@@ -170,7 +170,7 @@ def test_seed_glowserum_demo_workspace(
     test_database,
     tmp_path,
 ):
-    """Seed demo workspace mode creates extra users, 5 demo drafts, runs analysis, locks D, and creates pending precedent idempotently."""
+    """Seed demo workspace mode creates extra users, 5 demo drafts, runs analysis, locks D, and creates approved precedent idempotently."""
     users, _content_id, workspace_ids = workspace_users
     upload_dir = tmp_path / "demo-workspace-uploads"
     admin_email = "admin-1@example.com"
@@ -252,18 +252,21 @@ def test_seed_glowserum_demo_workspace(
             )
             assert rev_d.locked_at is not None
 
-            # 5. A pending precedent exists
-            pending_precedents = (
+            # 5. An approved demo precedent exists (completed reviewer -> manager lifecycle)
+            approved_precedents = (
                 await session.scalars(
                     select(Precedent).where(
                         Precedent.workspace_id == ws_id,
-                        Precedent.status == "pending",
+                        Precedent.status == "approved",
                     )
                 )
             ).all()
-            assert len(pending_precedents) >= 1
+            assert len(approved_precedents) >= 1
             finding_ids_a = {f.id for f in findings_a}
-            assert any(p.finding_id in finding_ids_a for p in pending_precedents)
+            assert any(
+                p.finding_id in finding_ids_a and p.approved_by is not None
+                for p in approved_precedents
+            )
 
     asyncio.run(verify_first())
 
@@ -308,15 +311,15 @@ def test_seed_glowserum_demo_workspace(
             assert len(demo_items) == 5
 
             # Precedents still exactly 1
-            pending_precedents = (
+            approved_precedents = (
                 await session.scalars(
                     select(Precedent).where(
                         Precedent.workspace_id == ws_id,
-                        Precedent.status == "pending",
+                        Precedent.status == "approved",
                     )
                 )
             ).all()
-            assert len(pending_precedents) == 1
+            assert len(approved_precedents) == 1
 
             # D remains approved and locked
             item_d = next(i for i in demo_items if i.title == "Demo: clean and approved")

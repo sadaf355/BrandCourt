@@ -159,7 +159,10 @@ async def confirm_rule(rule_id: str, user: CurrentUser, db: DBSession):
     if not item: raise HTTPException(404, 'Rule not found.')
     if item.status == 'retired': raise HTTPException(409, 'Retired rules cannot be activated. Create a new version first.')
     item.status='active'; item.confirmed_by=user.id
-    await write_audit(db, user, 'rule.confirmed', {'rule_id':item.id,'code':item.code,'version':item.version})
+    # Confirming a new version replaces any older active version of the same rule code.
+    superseded = (await db.scalars(select(Rule).where(Rule.workspace_id == user.workspace_id, Rule.code == item.code, Rule.id != item.id, Rule.status == 'active'))).all()
+    for older in superseded: older.status = 'retired'
+    await write_audit(db, user, 'rule.confirmed', {'rule_id':item.id,'code':item.code,'version':item.version,'retired_rule_ids':[o.id for o in superseded]})
     await db.commit(); await db.refresh(item); return rule_view(item)
 
 @router.post('/rules/{rule_id}/retire')

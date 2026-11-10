@@ -279,6 +279,9 @@ def test_generated_fix_uses_fact_and_is_verified_by_full_engine(
     saved_finding = asyncio.run(check_finding())
     assert saved_finding.intent_check["embedding_similarity"] >= 0.8
     assert saved_finding.suggested_fix == result["suggested_fix"]
+    # Phase B: the claims that changed are stored with the intent check so the UI can show them.
+    assert isinstance(saved_finding.intent_check["changed_claims"], list)
+    assert "intent_preserved_claim_count" in saved_finding.intent_check
 
 
 def test_fix_that_introduces_a_new_critical_finding_is_rejected(
@@ -394,3 +397,63 @@ def test_guideline_health_runs_bidirectional_local_nli_and_strict_rubric(
 
     logged = asyncio.run(calls())
     assert len(logged) == 3
+
+
+def test_vague_rule_wording_creates_a_draft_version_and_old_rule_stays_active_until_confirmed(
+    api_client, workspace_users, auth_headers, test_database
+):
+    users, _content_id, workspace_ids = workspace_users
+
+    async def create_rule():
+        async with test_database() as db:
+            rule = Rule(
+                workspace_id=workspace_ids[1], code="B-VAGUE", title="Use an appropriate tone",
+                text="Use an appropriate tone.", type="brand_voice", severity="major",
+                channels=["website"], status="active", version=1, created_by=users[(1, "admin")],
+            )
+            db.add(rule)
+            await db.flush()
+            db.add(RuleExample(rule_id=rule.id, kind="positive", text="Use short, direct sentences."))
+            await db.commit()
+            return rule.id
+
+    rule_id = asyncio.run(create_rule())
+    decision = api_client(
+        "POST",
+        "/api/guideline-health/decisions",
+        headers=auth_headers(1, "admin"),
+        json={
+            "issue_key": "b-vague-test-key",
+            "rule_id": rule_id,
+            "issue_type": "vague_rule",
+            "action": "accept",
+            "edited_wording": "Use sentences of at most 20 words.",
+        },
+    )
+    assert decision.status_code == 201, decision.text
+    body = decision.json()
+    assert body["rule_changed"] is True
+    assert body["new_rule_status"] == "draft"
+    assert body["new_rule_version"] == 2
+
+    async def rows():
+        async with test_database() as db:
+            rules = (
+                await db.scalars(
+                    select(Rule).where(Rule.workspace_id == workspace_ids[1], Rule.code == "B-VAGUE").order_by(Rule.version)
+                )
+            ).all()
+            examples = (await db.scalars(select(RuleExample).where(RuleExample.rule_id == rules[1].id))).all()
+            return [(r.version, r.status, r.text) for r in rules], len(examples)
+
+    versions, example_count = asyncio.run(rows())
+    assert versions[0] == (1, "active", "Use an appropriate tone.")
+    assert versions[1] == (2, "draft", "Use sentences of at most 20 words.")
+    assert example_count == 1
+
+    confirmed = api_client(
+        "POST", f"/api/rules/{body['new_rule_id']}/confirm", headers=auth_headers(1, "admin")
+    )
+    assert confirmed.status_code == 200, confirmed.text
+    versions, _ = asyncio.run(rows())
+    assert [status for _, status, _ in versions] == ["retired", "active"]

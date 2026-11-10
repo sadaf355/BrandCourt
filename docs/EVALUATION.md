@@ -1,5 +1,14 @@
 # BrandCourt evaluation
 
+> **Round 3 status (9 November 2026): no fresh three-variant Ollama evaluation has been run.**
+> The current delivery environment has no reachable Ollama endpoint and cannot install the missing
+> `aiosqlite` test dependency. The historic figures below are retained for traceability only;
+> they are not new Phase 6 measurements. The historical 52/52 deterministic result is explicitly
+> a rule-tuned regression, not held-out accuracy. The historical source-citation result is
+> **12/19 = 63.16%**, leaving **7/19 = 36.84%** without the required cited source. The 100%
+> target has not been reached. No miss is hidden or imputed for blocked Ollama variants: their
+> current-run metrics are **not measured**, not zero and not passed.
+
 ## Deterministic regression result: 52 cases, rules tuned on this set, not held-out accuracy
 
 The following measurements came from
@@ -42,6 +51,22 @@ scores are not estimates of production accuracy.
   evidence entry with a non-empty `source_ref`; it does not independently verify source authority.
 - The uncertain-OCR row is labelled in the dataset, but this run does not establish a real
   low-confidence OCR outcome for that case.
+
+## Image evaluation status
+
+The corpus includes five visual expected-finding labels, but the repository sample does not
+contain five corresponding source creative images. A label or precomputed image-analysis result
+is not a real image-analysis run. Therefore the five-image requirement remains unmeasured.
+Provide the five original image files, upload each through the API, verify OCR and image-analysis
+execution in the persisted revision/job records, and report per-image TP/FP/FN plus failures.
+Do not use landing-page stock artwork as a substitute for the intended GlowSerum test cases.
+
+## Holdout integrity
+
+The existing 52-row set has already informed rule development and regression work. A split made
+after that exposure would not be a valid untouched holdout. Freeze the rule set and collect a new,
+independently adjudicated batch for the never-used holdout. The current 52 remain a regression
+corpus only.
 
 ## Reproducible evaluation variants
 
@@ -187,3 +212,26 @@ expanded 52-case set has not yet been run through the API. Do not infer or extra
 precision/recall for the new cases from historical results. Generate fresh outputs for
 all three variants and use `score_eval.py` to replace the results only after all three
 complete against the identical 52-case dataset hash.
+
+## GlowSerum fix acceptance/rejection proof (manual API/UI run still required)
+
+Use a seeded fictional GlowSerum content item whose current revision is safe or has no existing
+Critical finding for the same claim. Open Fix Verification, enter that content item's ID, and
+use **Load Critical-rejection example** to load:
+
+```text
+GlowSerum cures eczema and guarantees results. Shop now.
+```
+
+Run Verify Candidate Copy. The expected acceptance condition is `safe_to_suggest: false` when
+the candidate introduces a new Critical finding; the result should include that finding in
+`new_blocking_findings`, and the UI should show the red rejection panel. This is an acceptance
+scenario, not a recorded result from this environment. Save the actual API response and a
+screenshot before marking the rejection proof complete.
+
+For an accepted example, use a GlowSerum finding for an unsupported superlative such as
+“the best serum”, request a minimal fix, and confirm the candidate retains the product noun and
+CTA while no new Critical finding is introduced. Capture `changed_claims`,
+`call_to_action_preserved`, `embedding_similarity`, `intent_preserved`,
+`new_blocking_findings`, and `safe_to_suggest` from the real API response. Do not infer an
+accepted result from the phrase-level unit smoke test alone.

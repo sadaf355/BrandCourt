@@ -18,7 +18,7 @@ async function signUpAndSignIn(
   workspaceName: string,
 ): Promise<{ email: string; password: string }> {
   const ts = Date.now()
-  const email = `${role}-${ts}@glowserum.test`
+  const email = `${role}-${ts}@example.com`
   const password = 'GlowSerum#2026!'
 
   await page.goto('/signup')
@@ -28,8 +28,7 @@ async function signUpAndSignIn(
   await page.getByLabel('Work email').fill(email)
   await page.getByPlaceholder('At least 8 characters').fill(password)
   await page.getByRole('button', { name: /Create workspace/ }).click()
-  // Wait for dashboard/home
-  await expect(page.getByText(/YOUR BRAND|EVIDENCE|WORKSPACE/i)).toBeVisible({ timeout: 20000 })
+  await expect(page.getByRole('heading', { name: 'Insights dashboard' })).toBeVisible({ timeout: 20000 })
   return { email, password }
 }
 
@@ -44,123 +43,91 @@ test.describe('GlowSerum full compliance flow', () => {
     void email; void password // used implicitly for session
 
     // Navigate to Content reviews
-    await page.getByRole('link', { name: /Content reviews/i }).click()
-    await expect(page.getByRole('heading', { name: /Content review/i })).toBeVisible()
+    await page.getByRole('link', { name: /Content Reviews/i }).click()
+    await expect(page.getByRole('heading', { name: 'Content Reviews' })).toBeVisible()
 
-    // Open new content dialog
-    await page.getByRole('button', { name: /New content/i }).click()
+    // Open new review form
+    await page.getByRole('button', { name: /New Review/i }).click()
 
-    // Fill in GlowSerum content
-    await page.getByLabel('Content title').fill('GlowSerum Evening Glow Campaign')
-    await page.getByLabel(/caption|marketing copy/i).fill(
-      'GlowSerum reduces dark spots by 50% in just 2 weeks. Dermatologist tested.',
+    // Fill in clean GlowSerum content so it can be submitted without unresolved blockers
+    await page.getByLabel(/Content Title/i).fill('GlowSerum Evening Glow Campaign')
+    await page.getByLabel(/Caption \/ Marketing Copy/i).fill(
+      'Enjoy a gentle daily evening routine with GlowSerum.',
     )
 
-    // Select channel if picker exists
-    const channelSelect = page.getByLabel(/channel/i)
+    const channelSelect = page.getByLabel(/Target Channel/i)
     if (await channelSelect.isVisible()) {
       await channelSelect.selectOption({ index: 1 })
     }
 
-    await page.getByRole('button', { name: /Create draft/i }).click()
+    await page.getByRole('button', { name: /Create Review/i }).click()
 
-    // Content appears in list
-    await expect(page.getByText('GlowSerum Evening Glow Campaign')).toBeVisible({ timeout: 15000 })
+    // Redirected to ReviewDetailPage
+    await expect(page.getByRole('heading', { name: 'GlowSerum Evening Glow Campaign' })).toBeVisible({ timeout: 15000 })
 
-    // Submit for review
-    const card = page.getByText('GlowSerum Evening Glow Campaign').first()
-    await card.click()
+    // Run Claim Court check and submit for review
+    await page.getByRole('button', { name: /Run Claim Court Check/i }).click()
+    await expect(page.getByTestId('review-progress')).toContainText(/completed/i, { timeout: 25000 })
 
-    // On detail page look for submit button
-    const submitBtn = page.getByRole('button', { name: /submit for review|send for review/i })
-    if (await submitBtn.isVisible()) {
-      await submitBtn.click()
-      // Should show pending/under review status
-      await expect(page.getByText(/under review|pending|submitted/i)).toBeVisible({ timeout: 10000 })
-    } else {
-      // Already auto-submitted — verify analysis running
-      await expect(page.getByText(/finding|analysis|reviewing/i)).toBeVisible({ timeout: 10000 })
-    }
+    const submitBtn = page.getByRole('button', { name: /Submit for Review/i })
+    await expect(submitBtn).toBeEnabled({ timeout: 10000 })
+    await submitBtn.click()
+    await expect(page.getByText(/submitted/i).first()).toBeVisible({ timeout: 10000 })
   })
 
   test('reviewer can view findings and override one with a written reason', async ({ page }) => {
     const ws = `GlowSerum-Reviewer-${Date.now()}`
     await signUpAndSignIn(page, 'reviewer', ws)
 
-    // Navigate to reviewer queue
-    await page.goto('/app/reviewer/queue')
+    // Create a content item with a claim that triggers a finding
+    await page.goto('/app/reviews')
+    await page.getByRole('button', { name: /New Review/i }).click()
+    await page.getByLabel(/Content Title/i).fill('GlowSerum Reviewer Test')
+    await page.getByLabel(/Caption \/ Marketing Copy/i).fill('Clinically proven to erase wrinkles overnight, guaranteed!')
+    await page.getByRole('button', { name: /Create Review/i }).click()
+    await expect(page.getByRole('heading', { name: 'GlowSerum Reviewer Test' })).toBeVisible({ timeout: 15000 })
 
-    // If queue is empty use the content reviews list
-    const hasQueue = await page.getByText(/reviewer queue|your queue/i).isVisible().catch(() => false)
-    if (!hasQueue) {
-      await page.goto('/app/reviews')
-    }
+    // Run Claim Court Check and wait for findings
+    await page.getByRole('button', { name: /Run Claim Court Check/i }).click()
+    await expect(page.getByTestId('finding-card').first()).toBeVisible({ timeout: 25000 })
 
-    // Create a content item to review
-    await page.getByRole('button', { name: /New content/i }).click()
-    await page.getByLabel('Content title').fill('GlowSerum Reviewer Test')
-    await page.getByLabel(/caption|marketing copy/i).fill('Clinically proven to erase wrinkles overnight, guaranteed!')
-    await page.getByRole('button', { name: /Create draft/i }).click()
-    await page.getByText('GlowSerum Reviewer Test').first().click()
+    // Open Approvals / Workflow view where reviewer Override decision is available
+    await page.goto('/app/approvals')
+    await expect(page.getByLabel('Select content item')).toBeVisible({ timeout: 10000 })
+    const overrideBtn = page.getByRole('button', { name: /^Override$/i }).first()
+    await expect(overrideBtn).toBeVisible({ timeout: 10000 })
 
-    // Wait for findings
-    const findingsSection = page.getByTestId('findings-list').or(page.getByText(/findings?/i).first())
-    await expect(findingsSection).toBeVisible({ timeout: 20000 })
+    page.once('dialog', async (dialog) => {
+      await dialog.accept('Marketing claim has supporting clinical study on file, ref CS-2026-04.')
+    })
+    await overrideBtn.click()
 
-    // Find an override button
-    const overrideBtn = page.getByRole('button', { name: /override/i }).first()
-    if (await overrideBtn.isVisible()) {
-      await overrideBtn.click()
-
-      // Fill override reason
-      const reasonInput = page.getByLabel(/reason|justification/i).or(page.getByPlaceholder(/reason/i))
-      await expect(reasonInput).toBeVisible({ timeout: 5000 })
-      await reasonInput.fill('Marketing claim has supporting clinical study on file, ref CS-2026-04.')
-
-      // Confirm override
-      const confirmBtn = page.getByRole('button', { name: /confirm override|save|submit/i })
-      await confirmBtn.click()
-
-      // Should show override recorded
-      await expect(page.getByText(/overrid|decision|accepted/i)).toBeVisible({ timeout: 10000 })
-    }
+    await expect(page.getByText(/Finding decision recorded: override/i)).toBeVisible({ timeout: 10000 })
   })
 
   test('manager can approve content after all blockers resolved', async ({ page }) => {
     const ws = `GlowSerum-Manager-${Date.now()}`
     await signUpAndSignIn(page, 'manager', ws)
 
-    // Go to approvals gate
-    await page.goto('/app/approvals')
-
-    // Create a content item that can be approved
+    // Create clean content item that can be approved
     await page.goto('/app/reviews')
-    await page.getByRole('button', { name: /New content/i }).click()
-    await page.getByLabel('Content title').fill('GlowSerum Manager Approve Test')
-    await page.getByLabel(/caption|marketing copy/i).fill('Our dermatologist-approved formula is gentle on skin.')
-    await page.getByRole('button', { name: /Create draft/i }).click()
-    await page.getByText('GlowSerum Manager Approve Test').first().click()
+    await page.getByRole('button', { name: /New Review/i }).click()
+    await page.getByLabel(/Content Title/i).fill('GlowSerum Manager Approve Test')
+    await page.getByLabel(/Caption \/ Marketing Copy/i).fill('Our gentle daily formula is soothing on skin.')
+    await page.getByRole('button', { name: /Create Review/i }).click()
+    await expect(page.getByRole('heading', { name: 'GlowSerum Manager Approve Test' })).toBeVisible({ timeout: 15000 })
 
-    // Navigate to approvals
+    // Submit, start review, and approve on WorkflowPage
     await page.goto('/app/approvals')
+    await expect(page.getByLabel('Select content item')).toBeVisible({ timeout: 10000 })
 
-    // Try to find and approve the item
-    const approveBtn = page.getByRole('button', { name: /approve/i }).first()
-    if (await approveBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await approveBtn.click()
+    await page.getByRole('button', { name: /Submit for review/i }).click()
+    await expect(page.getByRole('button', { name: /Start review/i })).toBeVisible({ timeout: 10000 })
+    await page.getByRole('button', { name: /Start review/i }).click()
+    await expect(page.getByRole('button', { name: /^Approve$/i })).toBeVisible({ timeout: 10000 })
+    await page.getByRole('button', { name: /^Approve$/i }).click()
 
-      // Confirm dialog if shown
-      const confirmDialog = page.getByRole('dialog')
-      if (await confirmDialog.isVisible().catch(() => false)) {
-        await confirmDialog.getByRole('button', { name: /approve|confirm/i }).click()
-      }
-
-      // Status should become approved
-      await expect(page.getByText(/approved/i)).toBeVisible({ timeout: 10000 })
-    } else {
-      // No items pending — just verify the approvals page loaded
-      await expect(page.getByRole('heading', { name: /approval|approvals/i })).toBeVisible()
-    }
+    await expect(page.getByText(/Workflow updated: approved/i)).toBeVisible({ timeout: 10000 })
   })
 })
 

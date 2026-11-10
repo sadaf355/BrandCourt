@@ -219,3 +219,16 @@ def test_daily_fact_expiry_and_notifications_are_idempotent(
         users[(1, "admin")],
         users[(1, "manager")],
     }
+
+
+def test_safe_replacements_for_cure_and_guaranteed_result_claims():
+    cure = generate_minimal_fix(
+        "Our serum cures acne. Shop now.", "cures acne", []
+    )
+    guarantee = generate_minimal_fix(
+        "Guaranteed results in 7 days. Learn more.", "Guaranteed results", []
+    )
+    assert "cures acne" not in cure.candidate_text.lower()
+    assert "may help improve the appearance" in cure.candidate_text.lower()
+    assert "guaranteed results" not in guarantee.candidate_text.lower()
+    assert "results may vary" in guarantee.candidate_text.lower()

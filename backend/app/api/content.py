@@ -32,6 +32,7 @@ from app.services.model_provider import (
     verify_adjudication_quote,
 )
 from app.services.image_upload import reencode_image
+from app.services.precedents import matching_approved_precedents
 
 router = APIRouter(tags=['content review and Claim Court'])
 EDIT_ROLES = {'creator', 'admin', 'manager'}
@@ -47,7 +48,7 @@ def item_view(x):
 def revision_view(x):
     return {'id':x.id,'content_id':x.content_id,'version':x.version,'caption':x.caption,'creative_filename':x.creative_filename,'ocr_status':getattr(x,'ocr_status','not_run'),'ocr_text':getattr(x,'ocr_text',''),'alt_text':getattr(x,'alt_text',''),'is_ai_media':getattr(x,'is_ai_media',False),'paid_gifted':x.paid_gifted,'detected_language':getattr(x,'detected_language','unknown'),'image_analysis':getattr(x,'image_analysis',None),'created_by':x.created_by,'created_at':x.created_at}
 def finding_view(x):
-    return {'id':x.id,'claim_text':x.claim_text,'verdict':x.verdict,'rationale':x.rationale,'evidence':x.evidence or [],'severity':x.severity,'layer':x.layer,'span_start':x.span_start,'span_end':x.span_end,'region':x.region,'suggested_fix':x.suggested_fix,'analysis_method':x.analysis_method,'state':getattr(x,'state','open'),'created_at':x.created_at}
+    return {'id':x.id,'content_id':x.content_id,'revision_id':x.revision_id,'claim_text':x.claim_text,'verdict':x.verdict,'rationale':x.rationale,'evidence':x.evidence or [],'severity':x.severity,'layer':x.layer,'span_start':x.span_start,'span_end':x.span_end,'region':x.region,'suggested_fix':x.suggested_fix,'intent_preserved':({'purpose':'Original communication intent','cta':'Preserved' if (x.intent_check or {}).get('call_to_action_present') else 'Not verified','claims_changed':list((x.intent_check or {}).get('changed_claims') or []),'safe':bool((x.intent_check or {}).get('intent_preserved')),'embedding_similarity':(x.intent_check or {}).get('embedding_similarity')} if x.intent_check else None),'analysis_method':x.analysis_method,'state':getattr(x,'state','open'),'created_at':x.created_at}
 
 def _analyze_stored_image(
     storage,
@@ -829,12 +830,28 @@ async def _perform_analysis(db, user, item, revision, job=None):
         if policy:
             verdict, severity, code, rationale = policy
             evidence.append({'type':'policy_pack','code':code,'title':'India starter guidance','text':rationale,'source_ref':'BrandCourt starter policy pack (advisory; not legal advice)'})
-        for precedent in precedents:
-            pattern_words={w for w in re.findall(r'[a-z0-9]+',precedent.pattern_text.lower()) if len(w)>2}
-            if pattern_words:
-                overlap=len(words & pattern_words)/len(pattern_words)
-                if overlap>=0.35:
-                    evidence.append({'type':'approved_precedent','id':precedent.id,'rule_id':precedent.rule_id,'channel':precedent.channel,'pattern_text':precedent.pattern_text,'reason':precedent.reason,'valid_to':precedent.valid_to.isoformat() if precedent.valid_to else None,'match_score':round(overlap,2),'notice':'Advisory reviewer precedent; not proof and does not determine the verdict.'})
+        # Approved precedents are attached automatically only when the same rule/channel
+        # applies and semantic similarity meets the shared 0.85 threshold. They never
+        # alter the verdict or silence a critical finding.
+        applicable_rule_ids = {
+            evidence_item.get("rule_id") or evidence_item.get("id")
+            for evidence_item in evidence
+            if evidence_item.get("type") == "active_rule"
+            and (evidence_item.get("rule_id") or evidence_item.get("id"))
+        }
+        for applicable_rule_id in applicable_rule_ids:
+            for score, precedent in matching_approved_precedents(
+                precedents, rule_id=applicable_rule_id, channel=item.channel,
+                pattern_text=claim,
+            ):
+                evidence.append({
+                    'type': 'approved_precedent', 'id': precedent.id,
+                    'rule_id': precedent.rule_id, 'channel': precedent.channel,
+                    'pattern_text': precedent.pattern_text, 'reason': precedent.reason,
+                    'valid_to': precedent.valid_to.isoformat() if precedent.valid_to else None,
+                    'match_score': round(score, 4),
+                    'notice': 'Advisory only; reviewer confirmation is required and verdict/severity are unchanged.',
+                })
         if verdict is None or (
             not risky_claim
             and not any(e.get('type') in {'active_rule', 'brand_term_list', 'policy_pack'} for e in evidence)

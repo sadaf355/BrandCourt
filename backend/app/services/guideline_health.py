@@ -74,13 +74,21 @@ def vague_rule_issue(rule: Any, examples: Iterable[Any]) -> dict[str, Any] | Non
         explanation.append("no testable condition was found")
     if not has_example:
         explanation.append("no positive or negative example is attached")
+    original = rule.text.strip()
+    concrete_clause = (
+        "Use only product benefits supported by an active approved fact; state the measured value, unit, "
+        "and evidence period, and do not imply a medical outcome or guaranteed result."
+    )
+    suggested = original.rstrip(". ") + ". " + concrete_clause
+    for vague in vague_hits:
+        suggested = re.sub(re.escape(vague), "clearly specified and evidence-backed", suggested, flags=re.I)
     return {
         "type": "vague_rule",
         "rule_id": rule.id,
         "code": rule.code,
         "title": rule.title,
         "explanation": "; ".join(explanation) or "The rule may not be sufficiently testable.",
-        "suggestion": "State an observable condition and add at least one concrete example.",
+        "suggestion": suggested,
         "testable_condition": has_testable_condition,
         "has_example": has_example,
     }

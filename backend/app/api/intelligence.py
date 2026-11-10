@@ -55,6 +55,8 @@ class VerifyInput(BaseModel):
 
 class GuidelineDecisionInput(BaseModel):
     issue_key: str = Field(min_length=16, max_length=64)
+    rule_id: str | None = None
+    issue_type: str | None = None
     action: str = Field(pattern="^(accept|edit|ignore)$")
     edited_wording: str | None = Field(default=None, max_length=4000)
 
@@ -334,16 +336,48 @@ async def decide_guideline_issue(body: GuidelineDecisionInput, user: CurrentUser
     require_role(user, OWNER_ROLES)
     if body.action == "edit" and not (body.edited_wording or "").strip():
         raise HTTPException(422, "edited_wording is required when action is edit.")
+    rule_changed = False
+    new_rule = None
+    if body.action in {"accept", "edit"} and body.issue_type == "vague_rule" and body.rule_id and body.edited_wording:
+        rule = await db.scalar(select(Rule).where(Rule.id == body.rule_id, Rule.workspace_id == user.workspace_id))
+        if not rule:
+            raise HTTPException(404, "Guideline rule not found.")
+        if rule.status == "retired":
+            raise HTTPException(409, "Retired rules cannot be reworded. Open the latest version of this rule.")
+        # Rule wording changes go through normal versioning: the current rule stays in force
+        # until a guideline owner confirms the new draft version (nothing changes automatically).
+        latest = (await db.scalars(
+            select(Rule).where(Rule.workspace_id == user.workspace_id, Rule.code == rule.code).order_by(Rule.version.desc())
+        )).first()
+        new_rule = Rule(
+            workspace_id=user.workspace_id, document_id=rule.document_id, code=rule.code, title=rule.title,
+            text=body.edited_wording.strip(), type=rule.type, severity=rule.severity, channels=list(rule.channels or []),
+            status="draft", version=(latest.version if latest else rule.version) + 1, source_ref=rule.source_ref,
+            created_by=user.id,
+        )
+        db.add(new_rule)
+        await db.flush()
+        for example in (await db.scalars(select(RuleExample).where(RuleExample.rule_id == rule.id))).all():
+            db.add(RuleExample(rule_id=new_rule.id, kind=example.kind, text=example.text))
+        await write_audit(
+            db, user, "rule.version_created",
+            {"previous_rule_id": rule.id, "rule_id": new_rule.id, "code": new_rule.code,
+             "version": new_rule.version, "source": "guideline_health"},
+        )
+        rule_changed = True
     await write_audit(
         db, user, "guideline_health.issue_decided",
-        {
-            "issue_key": body.issue_key,
-            "action": body.action,
-            "edited_wording": body.edited_wording.strip() if body.edited_wording else None,
-        },
+        {"issue_key": body.issue_key, "rule_id": body.rule_id, "issue_type": body.issue_type, "action": body.action,
+         "edited_wording": body.edited_wording.strip() if body.edited_wording else None},
     )
     await db.commit()
-    return {"issue_key": body.issue_key, "action": body.action, "rule_changed": False}
+    result = {"issue_key": body.issue_key, "action": body.action, "rule_changed": rule_changed}
+    if new_rule is not None:
+        result.update({
+            "new_rule_id": new_rule.id, "new_rule_version": new_rule.version, "new_rule_status": "draft",
+            "message": "A new draft version was created. The current rule stays active until a guideline owner confirms the draft.",
+        })
+    return result
 
 
 @router.put('/workspace/model-mode')
@@ -444,12 +478,6 @@ async def precedent_suggestions(finding_id: str, user: CurrentUser, db: DBSessio
     )
     if not finding:
         raise HTTPException(404, "Finding not found.")
-    if str(finding.severity).lower() == "critical":
-        return {
-            "finding_id": finding.id,
-            "suggestions": [],
-            "message": "Critical findings are never downgraded by precedent.",
-        }
     rule_ids = {
         evidence.get("rule_id") or evidence.get("id")
         for evidence in (finding.evidence or [])
@@ -658,7 +686,14 @@ async def verify_fix(content_id: str, body: VerifyInput, user: CurrentUser, db: 
         elif old_findings:
             source_finding = old_findings[0]
         if source_finding:
-            source_finding.intent_check = intent_check
+            source_finding.intent_check = {
+                **intent_check,
+                "changed_claims": result["changed_claims"],
+                "original_claim_count": len(original_claims),
+                "candidate_claim_count": len(new_claims),
+                "intent_preserved_claim_count": preserved,
+                "intent_preserved": intent_preserved,
+            }
         for finding in candidate_findings: await db.delete(finding)
         await db.delete(candidate)
         item.current_revision=original_version; item.status=original_status
