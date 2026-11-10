@@ -671,7 +671,15 @@ async def verify_fix(content_id: str, body: VerifyInput, user: CurrentUser, db: 
             intent_check["intent_preserved"]
             and (not old_cta or new_cta)
         )
-        result={'content_id':item.id,'source_revision_id':rev.id,'source_revision_version':rev.version,'candidate_text':body.proposed_text,'similarity':round(similarity,3),'embedding_similarity':intent_check["embedding_similarity"],'call_to_action_preserved':(not old_cta or new_cta),'original_claim_count':len(original_claims),'candidate_claim_count':len(new_claims),'intent_preserved_claim_count':preserved,'changed_claims':[claim for claim in original_claims if not any(SequenceMatcher(None,claim.lower(),new.lower()).ratio()>=0.72 for new in new_claims)],'intent_preserved':intent_preserved,'intent_check':intent_check,'full_engine_rerun':True,'candidate_findings':[{'claim_text':f.claim_text,'verdict':f.verdict,'severity':f.severity,'rationale':f.rationale,'evidence':f.evidence or []} for f in candidate_findings],'new_blocking_findings':new_critical,'safe_to_suggest':not new_critical and intent_preserved,'method':'deterministic_full_engine_candidate_revision','limitations':['Intent preservation uses a local hashing embedding and CTA retention, not human-level semantic equivalence.','Any new critical finding or intent-check failure rejects the suggestion; the candidate is never applied or approved.']}
+        def _norm_claim(text: str) -> str:
+            return re.sub(r"\s+", " ", text.casefold()).strip()
+
+        normalized_new_claims = {_norm_claim(new) for new in new_claims}
+        changed_claims = [
+            claim for claim in original_claims
+            if _norm_claim(claim) not in normalized_new_claims
+        ]
+        result={'content_id':item.id,'source_revision_id':rev.id,'source_revision_version':rev.version,'candidate_text':body.proposed_text,'similarity':round(similarity,3),'embedding_similarity':intent_check["embedding_similarity"],'call_to_action_preserved':(not old_cta or new_cta),'original_claim_count':len(original_claims),'candidate_claim_count':len(new_claims),'intent_preserved_claim_count':preserved,'changed_claims':changed_claims,'intent_preserved':intent_preserved,'intent_check':intent_check,'full_engine_rerun':True,'candidate_findings':[{'claim_text':f.claim_text,'verdict':f.verdict,'severity':f.severity,'rationale':f.rationale,'evidence':f.evidence or []} for f in candidate_findings],'new_blocking_findings':new_critical,'safe_to_suggest':not new_critical and intent_preserved,'method':'deterministic_full_engine_candidate_revision','limitations':['Intent preservation uses a local hashing embedding and CTA retention, not human-level semantic equivalence.','Any new critical finding or intent-check failure rejects the suggestion; the candidate is never applied or approved.']}
         source_finding = None
         if body.finding_id:
             source_finding = await db.scalar(

@@ -1,0 +1,45 @@
+{
+  "critical_finding": {
+    "id": "40758ab5-9580-437c-9c05-1ae9ef0c0a83",
+    "content_id": "0a5462c9-2bd3-4bbb-82b3-5cb9a8520f40",
+    "revision_id": "b10a74ef-bf9f-4ebb-9737-1596c61ab1cb",
+    "claim_text": "India's #1 serum for glowing skin.",
+    "verdict": "needs_human_review",
+    "rationale": "A superlative or #1 claim needs specific, current evidence. No rank-specific proof was established by this baseline; unsupported is not a finding that the claim is false.",
+    "evidence": [
+      {
+        "type": "policy_pack",
+        "code": "IN-2",
+        "title": "pattern",
+        "text": "A superlative or #1 claim needs specific, current evidence. No rank-specific proof was established by this baseline; unsupported is not a finding that the claim is false.",
+        "source_ref": "BrandCourt India starter policy pack (advisory; not legal advice)"
+      },
+      {
+        "type": "policy_pack",
+        "code": "IN-2",
+        "title": "India starter guidance",
+        "text": "A superlative or #1 claim needs specific, current evidence. No rank-specific proof was established by this baseline; unsupported is not a finding that the claim is false.",
+        "source_ref": "BrandCourt starter policy pack (advisory; not legal advice)"
+      }
+    ],
+    "severity": "critical",
+    "layer": "claims,rules",
+    "span_start": 0,
+    "span_end": 34,
+    "region": null,
+    "suggested_fix": "Provide verifiable proof for ranking claim.",
+    "intent_preserved": null,
+    "analysis_method": "layer1_deterministic",
+    "state": "open",
+    "created_at": "2026-11-10T10:22:35.660790"
+  },
+  "precedent_id": "8c312149-477e-40f3-8a73-a27372f76f32",
+  "precedent_suggestions_response": {
+    "finding_id": "40758ab5-9580-437c-9c05-1ae9ef0c0a83",
+    "suggestions": []
+  },
+  "confirm_status_code": 409,
+  "confirm_response_body": {
+    "detail": "Critical findings cannot be downgraded by precedent."
+  }
+}

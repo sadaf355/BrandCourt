@@ -54,4 +54,35 @@ describe('apiClient API contract alignment', () => {
     expect(fetchMock.mock.calls[1][0]).toContain('/settings/models')
     expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({ local_model_enabled: true })
   })
+
+  it('aligns rule confirmation/retirement, logo upload, facts, and omits unsupported stubs', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ id: 'r1', code: 'IN-1', title: 'R1', text: 'Desc', type: 'claim', severity: 'major', channels: ['instagram'], status: 'active', version: 1, created_at: '2026-01-01T00:00:00Z' }))
+      .mockResolvedValueOnce(jsonResponse({ id: 'r1', code: 'IN-1', title: 'R1', text: 'Desc', type: 'claim', severity: 'major', channels: ['instagram'], status: 'retired', version: 1, created_at: '2026-01-01T00:00:00Z' }))
+      .mockResolvedValueOnce(jsonResponse({ id: 'f1', statement: 'Clinical 42%', value: '42%', source_ref: 'CSR', version: 1, status: 'active', created_at: '2026-01-01T00:00:00Z' }))
+      .mockResolvedValueOnce(jsonResponse({ id: 'a1', kind: 'logo', name: 'Logo', data: { width: 100, height: 100 }, updated_at: '2026-01-01T00:00:00Z' }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const confirmed = await apiClient.confirmRule('r1')
+    expect(confirmed.name).toBe('R1')
+    expect(fetchMock.mock.calls[0][0]).toContain('/rules/r1/confirm')
+
+    const retired = await apiClient.retireRule('r1')
+    expect(retired.status).toBe('retired')
+    expect(fetchMock.mock.calls[1][0]).toContain('/rules/r1/retire')
+
+    const fact = await apiClient.createFact({ statement: 'Clinical 42%', claim_value: '42%', source_reference: 'CSR', valid_from: '' })
+    expect(fact.claim_value).toBe('42%')
+    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body)).valid_from).toBeUndefined()
+
+    const logoFile = new File([new Uint8Array([137, 80, 78, 71])], 'brand.png', { type: 'image/png' })
+    const logoAsset = await apiClient.uploadLogoAsset('Brand Logo', logoFile)
+    expect(logoAsset.asset_type).toBe('logo')
+    expect(fetchMock.mock.calls[3][0]).toContain('/assets/logo')
+
+    expect('resolveComment' in apiClient).toBe(false)
+    expect('inviteMember' in apiClient).toBe(false)
+    expect('deactivateMember' in apiClient).toBe(false)
+    expect('deleteWorkspaceData' in apiClient).toBe(false)
+  })
 })

@@ -1,61 +1,173 @@
 /**
- * Accessibility tests with axe on routes and performance check for 100 findings.
+ * Full WCAG 2.0/2.1 A+AA accessibility audit across public and authenticated routes
+ * in both light and dark themes using axe-core, plus 100-finding render performance check.
  *
  * Run with: npx playwright test e2e/accessibility.spec.ts
  */
 import { createRequire } from 'node:module'
 import { test, expect } from '@playwright/test'
 
-// Locate axe-core source file
 const require = createRequire(import.meta.url)
 const axePath = require.resolve('axe-core')
+const API_BASE = (process.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace(/\/$/, '')
 
-const CORE_ROUTES = [
-  '/',
-  '/login',
-  '/signup',
+const PUBLIC_ROUTES = ['/', '/login', '/signup']
+
+const AUTHENTICATED_STATIC_ROUTES = [
   '/app/dashboard',
   '/app/reviews',
+  '/app/reviews/new',
   '/app/reviewer/queue',
   '/app/approvals',
+  '/app/brand/guidelines',
   '/app/brand/rules',
   '/app/brand/facts',
+  '/app/brand/assets',
   '/app/brand/guideline-health',
   '/app/insights',
-  '/app/intelligence/precedents',
+  '/app/precedents',
   '/app/intelligence/fix-verify',
   '/app/settings/models',
+  '/app/audit',
+  '/app/settings/workspace',
+  '/app/settings/members',
 ]
 
-test.describe('Accessibility audits with Axe', () => {
-  test.setTimeout(120_000)
+const THEMES = ['light', 'dark'] as const
 
-  for (const route of CORE_ROUTES) {
-    test(`axe audit on route: ${route}`, async ({ page }) => {
-      await page.goto(route)
-      await page.waitForLoadState('domcontentloaded')
+type AxeViolation = {
+  id: string
+  impact?: string | null
+  description: string
+  help: string
+  helpUrl: string
+  nodes: Array<{ target: string[]; failureSummary?: string }>
+}
 
-      // Inject axe-core directly
-      await page.addScriptTag({ path: axePath })
+async function runAxeAudit(page: import('@playwright/test').Page, label: string) {
+  await page.addScriptTag({ path: axePath })
+  const results = await page.evaluate(async () => {
+    const axeWindow = window as unknown as {
+      axe: {
+        run: (
+          context: Document,
+          options: object
+        ) => Promise<{ violations: AxeViolation[] }>
+      }
+    }
+    return await axeWindow.axe.run(document, {
+      runOnly: {
+        type: 'tag',
+        values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'],
+      },
+    })
+  })
 
-      // Run axe in the browser context
-      const results = await page.evaluate(async () => {
-        const axeWindow = window as Window & { axe: { run: (context: Document, options: object) => Promise<{ violations: Array<{ impact?: string | null }> }> } }
-        return await axeWindow.axe.run(document, {
-          runOnly: {
-            type: 'tag',
-            values: ['wcag2a', 'wcag2aa'],
-          },
-          rules: {
-            // Ignore color contrast variations due to dynamic themes/canvases if any
-            'color-contrast': { enabled: false },
-          },
-        })
+  if (results.violations.length > 0) {
+    const formatted = results.violations
+      .map(
+        (v) =>
+          `  [${v.impact ?? 'unknown'}] ${v.id}: ${v.help} (${v.nodes.length} nodes: ${v.nodes
+            .slice(0, 3)
+            .map((n) => n.target.join(' '))
+            .join(', ')})`
+      )
+      .join('\n')
+    console.log(`AXE VIOLATIONS for ${label}:\n${formatted}`)
+  } else {
+    console.log(`AXE CLEAN for ${label}: 0 violations`)
+  }
+  return results.violations
+}
+
+test.describe('Accessibility audits with Axe (light & dark themes)', () => {
+  test.setTimeout(360_000)
+
+  let authToken = ''
+  let sampleContentId = ''
+
+  test.beforeAll(async ({ request }) => {
+    const unique = `${Date.now()}-${Math.floor(Math.random() * 10000)}`
+    const regResp = await request.post(`${API_BASE}/auth/register-workspace`, {
+      data: {
+        workspace_name: `A11y Audit Org ${unique}`,
+        full_name: 'A11y Auditor',
+        email: `a11y-${unique}@example.com`,
+        password: 'StrongAuditPassword!2026',
+      },
+    })
+    if (regResp.ok()) {
+      const regData = await regResp.json()
+      authToken = regData.access_token
+      const contentResp = await request.post(`${API_BASE}/content`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+        data: {
+          title: 'A11y Audit Sample Post',
+          channel: 'instagram',
+          campaign: 'Audit 2026',
+          caption: 'Our GlowSerum hydrates skin for 24 hours.',
+        },
       })
+      if (contentResp.ok()) {
+        const created = await contentResp.json()
+        sampleContentId = created.id
+      }
+    }
+  })
 
-      // We expect 0 critical accessibility violations
-      const criticalViolations = results.violations.filter((v: any) => v.impact === 'critical')
-      expect(criticalViolations).toHaveLength(0)
+  for (const theme of THEMES) {
+    for (const route of PUBLIC_ROUTES) {
+      test(`public route ${route} [${theme}]`, async ({ page }) => {
+        await page.emulateMedia({ colorScheme: theme })
+        await page.addInitScript((selectedTheme) => {
+          localStorage.removeItem('brandcourt-token')
+          document.documentElement.dataset.theme = selectedTheme
+          document.documentElement.classList.toggle('dark', selectedTheme === 'dark')
+        }, theme)
+
+        await page.goto(route)
+        await page.waitForLoadState('domcontentloaded')
+        await expect(page).toHaveURL(new RegExp(`${route === '/' ? '/$' : `${route}$`}`))
+        await page.waitForTimeout(800)
+
+        const violations = await runAxeAudit(page, `${route} [${theme}]`)
+        expect(violations).toEqual([])
+      })
+    }
+
+    test(`authenticated routes audit [${theme}]`, async ({ page }) => {
+      test.skip(!authToken, 'Backend API required to audit authenticated routes.')
+      const routes = [...AUTHENTICATED_STATIC_ROUTES]
+      if (sampleContentId) {
+        routes.push(`/app/reviews/${sampleContentId}`, `/app/approvals/${sampleContentId}`)
+      }
+
+      await page.emulateMedia({ colorScheme: theme })
+      await page.addInitScript(
+        ({ token, selectedTheme }) => {
+          localStorage.setItem('brandcourt-token', token)
+          document.documentElement.dataset.theme = selectedTheme
+          document.documentElement.classList.toggle('dark', selectedTheme === 'dark')
+        },
+        { token: authToken, selectedTheme: theme }
+      )
+
+      const summary: Array<{ route: string; count: number; ids: string[] }> = []
+      for (const route of routes) {
+        await page.goto(route)
+        await page.waitForLoadState('domcontentloaded')
+        // Ensure loading skeletons settle
+        await page.waitForTimeout(250)
+        const pathname = new URL(page.url()).pathname
+        expect(pathname).toBe(route)
+
+        const violations = await runAxeAudit(page, `${route} [${theme}]`)
+        if (violations.length > 0) {
+          summary.push({ route, count: violations.length, ids: violations.map((v) => v.id) })
+        }
+      }
+
+      expect(summary).toEqual([])
     })
   }
 })

@@ -191,6 +191,9 @@ def test_insights_summary_counts():
     assert summary["severity_distribution"]["critical"] == 1
     assert summary["overrides_total"] == 2
     assert summary["disputes_total"] == 1
+    assert summary["average_approval_hours"] is None
+    assert summary["average_review_rounds"] is None
+    assert summary["is_seeded_reference"] is False
 
 
 def test_model_settings_admin_only():

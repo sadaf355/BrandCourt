@@ -3,7 +3,6 @@
 <div align="center">
 
 [![CI](https://github.com/sadaf355/BrandCourt/actions/workflows/ci.yml/badge.svg)](https://github.com/sadaf355/BrandCourt/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React 19](https://img.shields.io/badge/Frontend-React%2019-61DAFB.svg?logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
@@ -42,7 +41,7 @@ flowchart TD
 
     subgraph API ["Backend API (FastAPI + Async Python)"]
         Auth["Tenant & RBAC Gateway (JWT)"]
-        Router["API Routers (/workspaces, /campaigns, /reviews, /facts)"]
+        Router["API Routers (/auth, /content, /rules, /facts, /insights)"]
         
         subgraph ClaimCourt ["Claim Court Engine"]
             RulesEngine["Deterministic Rule Engine\n(Regex, Windowing, Thresholds)"]
@@ -73,7 +72,7 @@ flowchart TD
 
 ### 🏛️ Automated Claim Court & Evidence-Led Verification
 - **Multi-Modal Review**: Analyzes drafted copy alongside attached creative graphics (extracting text from raster images via Tesseract OCR).
-- **Explainable Findings**: Every finding provides an exact severity score (`blocking`, `warning`, `advisory`), source guideline/fact citation, matched excerpt, and inspection method.
+- **Explainable Findings**: Every finding provides a normalized severity (`critical`, `major`, `advisory`), source guideline/fact citation, matched excerpt, and inspection method.
 - **Fact Expiry & Disclaimers**: Automatically flags statements relying on expired clinical facts, missing mandatory disclosures, or unauthorized comparative claims.
 
 ### 🛡️ Human-in-the-Loop Approval Gateway
@@ -115,7 +114,7 @@ flowchart TD
 | **Creator** | Draft campaigns, attach creative media, review findings, submit for review, comment. |
 | **Reviewer** | Inspect evidence citations, request copy adjustments, submit finding-level decisions and overrides. |
 | **Manager** | Approve or reject campaigns, enforce approval gates, reopen signed-off campaigns with cause. |
-| **Guideline Owner (`admin`)** | Full workspace authority: manage team seats, upload guidelines, confirm rules, configure facts and policies. |
+| **Guideline Owner (`admin`)** | Full workspace authority: manage workspace members & roles, upload guidelines, confirm rules, configure facts and policies. |
 
 ---
 
@@ -236,7 +235,10 @@ Settings are loaded via environment variables or a local `.env` file via Pydanti
 | `UPLOAD_DIR` | `uploads` | Local directory for storing uploaded guidelines and creatives. |
 | `S3_BUCKET` | — | Target bucket name when `STORAGE_BACKEND=s3`. |
 | `S3_ENDPOINT_URL` | — | Custom endpoint URL for S3-compatible providers (e.g., Cloudflare R2). |
-| `JOB_WORKER_ENABLED` | `true` | Starts the async background review queue within the API process. |
+| `JOB_WORKER_ENABLED` | `true` | Starts the async background review queue and 24-hour fact-expiry check within the API process. |
+| `DEMO_LOGIN_ENABLED` | `true` | Enables one-click `POST /api/auth/demo-login` strictly for the fictional workspace marked `is_demo=true`. |
+| `DEMO_ADMIN_EMAIL` | `demo-admin@glowserum.com` | Email address used for the fictional demo admin account. |
+| `DEMO_RESET_ON_START` | `false` | Re-initializes the demo workspace records at API startup when `true`. |
 | `MODEL_MODE` | `deterministic` | `deterministic` for rule-based engine or `ollama` for hybrid embeddings. |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama service endpoint if using semantic NLI. |
 
@@ -323,4 +325,4 @@ pytest -v
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+No separate `LICENSE` file is included in this repository.

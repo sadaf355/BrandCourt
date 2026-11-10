@@ -265,10 +265,38 @@ async def process_next_job(
     )
 
 
+FACT_EXPIRY_INTERVAL = timedelta(hours=24)
+
+
+async def maybe_run_fact_expiry(
+    last_run_at: datetime | None,
+    *,
+    now: datetime | None = None,
+    sessions: async_sessionmaker[AsyncSession] = SessionLocal,
+    interval: timedelta = FACT_EXPIRY_INTERVAL,
+) -> datetime | None:
+    """Run fact expiry checks once per configured interval inside the worker loop."""
+    current = now or datetime.now(timezone.utc)
+    if last_run_at is not None and (current - last_run_at) < interval:
+        return last_run_at
+    from scripts.expire_facts import process_fact_expiry
+
+    summary = await process_fact_expiry(sessions=sessions, now=current)
+    logger.info("Periodic fact expiry completed: %s", summary)
+    return current
+
+
 async def worker_loop() -> None:
     worker_id = f"{socket.gethostname()}-{uuid4().hex[:12]}"
+    last_fact_expiry_at: datetime | None = None
     while True:
         try:
+            try:
+                last_fact_expiry_at = await maybe_run_fact_expiry(last_fact_expiry_at)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Periodic fact expiry failed; continuing review job polling.")
             if not await process_next_job(worker_id=worker_id):
                 await asyncio.sleep(settings.job_poll_seconds)
         except asyncio.CancelledError:

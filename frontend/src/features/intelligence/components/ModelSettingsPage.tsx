@@ -72,7 +72,7 @@ export function ModelSettingsPage() {
     <div className="page-container p-6 space-y-6" data-testid="model-settings-page">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
           <Cpu className="text-indigo-400" size={26} />
           Model Architecture & Privacy Controls
         </h1>
@@ -85,10 +85,10 @@ export function ModelSettingsPage() {
       <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-base font-semibold text-white">Local-Only Model Execution Mode</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Local-Only Model Execution Mode</h2>
             <span
               className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                isLocalEnabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'
+                isLocalEnabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-300'
               }`}
             >
               {isLocalEnabled ? 'Ollama enabled' : 'Deterministic mode'}
@@ -104,7 +104,7 @@ export function ModelSettingsPage() {
           onClick={handleToggle}
           disabled={updateModeMutation.isPending}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
-            !isAdmin ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-500' : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+            !isAdmin ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-300' : 'bg-indigo-600 hover:bg-indigo-500 text-white'
           }`}
           title={!isAdmin ? 'Admin role required' : 'Toggle local execution'}
         >
@@ -117,10 +117,10 @@ export function ModelSettingsPage() {
       <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 flex items-start gap-3 text-xs text-indigo-300">
         <ShieldCheck size={18} className="text-indigo-400 shrink-0 mt-0.5" />
         <div className="space-y-1">
-          <span className="font-semibold text-white">Non-Negotiable Data Privacy Rule:</span>
+          <span className="font-semibold text-gray-900 dark:text-white">Non-Negotiable Data Privacy Rule:</span>
           <p className="leading-relaxed">
             BrandCourt masks configured secret terms and detected personal information before optional model calls.
-            Model/service call metadata is recorded in the <code className="text-indigo-200">ai_calls</code> log.
+            Model/service call metadata is recorded in the <code className="text-indigo-300">ai_calls</code> log.
             Review the masking policy and hosting location before enabling a model provider.
           </p>
         </div>
@@ -128,7 +128,7 @@ export function ModelSettingsPage() {
 
       {/* Active Models Table */}
       <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/60 space-y-4">
-        <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <Layers size={16} className="text-indigo-400" />
           Active Model Services Pipeline
         </h2>
@@ -147,7 +147,7 @@ export function ModelSettingsPage() {
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
               {settingsData?.active_models.map((m, idx) => (
                 <tr key={idx} className="hover:bg-slate-800/30">
-                  <td className="py-3 px-3 font-semibold text-white">{m.name}</td>
+                  <td className="py-3 px-3 font-semibold text-gray-900 dark:text-white">{m.name}</td>
                   <td className="py-3 px-3 font-mono text-slate-400">{m.provider}</td>
                   <td className="py-3 px-3 text-slate-300">{m.purpose}</td>
                   <td className="py-3 px-3">
@@ -162,7 +162,7 @@ export function ModelSettingsPage() {
                           ? 'bg-emerald-500/10 text-emerald-400'
                           : (m.status === 'ready' || m.status === 'configured')
                           ? 'bg-blue-500/10 text-blue-400'
-                          : 'bg-slate-800 text-slate-500'
+                          : 'bg-slate-800 text-slate-300'
                       }`}
                     >
                       {m.status}
@@ -178,7 +178,7 @@ export function ModelSettingsPage() {
       {/* Per-Item Data-Flow Audit Log */}
       <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/60 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <Activity size={16} className="text-indigo-400" />
             Model / Service Data-Flow Log (Last 20 Invocations)
           </h2>
@@ -202,7 +202,7 @@ export function ModelSettingsPage() {
               {settingsData?.data_flow_log.map((log) => (
                 <tr key={log.id} className="hover:bg-slate-800/30">
                   <td className="py-3 px-3 font-mono text-slate-400">{log.id}</td>
-                  <td className="py-3 px-3 font-medium text-white">{log.model}</td>
+                  <td className="py-3 px-3 font-medium text-gray-900 dark:text-white">{log.model}</td>
                   <td className="py-3 px-3 text-slate-300">{log.purpose}</td>
                   <td className="py-3 px-3 font-mono">{log.input_chars}</td>
                   <td className="py-3 px-3 font-mono">{log.masked_entities}</td>

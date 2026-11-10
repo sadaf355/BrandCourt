@@ -91,7 +91,7 @@ This contract describes the routes currently registered by the FastAPI applicati
 | Method and path | Request | Success response | Allowed roles |
 |---|---|---|---|
 | `GET /api/guideline-health` | None | `{active_rules, issue_count, issues, method, model_mode, notice}`. Issues include `issue_key`, `type`, `rule_id`, `code`, `explanation`, `suggestion`, and `analysis_status` where a model step ran. Active rules are embedded; candidate conflicts are screened by channel scope/similarity. Override-rate issues appear only after at least five findings for that rule. Findings are suggestions only; this route never changes a rule. | Any authenticated role |
-| `POST /api/guideline-health/decisions` | `{issue_key, action: accept|edit|ignore, edited_wording?}`; edited_wording is required for `edit` | `201 {issue_key, action, rule_changed: false}`; the decision is audit-logged and does not change a rule | manager, admin |
+| `POST /api/guideline-health/decisions` | `{issue_key, rule_id?, issue_type?, action: accept|edit|ignore, edited_wording?}`; edited_wording is required for `edit` | `201 {issue_key, action, rule_changed: false, draft_rule_id?, draft_version?}`; `accept` and `edit` on vague rules create a new `draft` rule version without activating it, and the decision is audit-logged | manager, admin |
 | `PUT /api/workspace/model-mode` | `{mode: deterministic|disabled|ollama}` | `{model_mode}`; writes the workspace setting and audit event | admin |
 | `GET /api/precedents` | None | `[{id, finding_id, rule_id, channel, pattern_text, reason, valid_to, status, created_by, approved_by, created_at}]` | Any authenticated role |
 | `POST /api/precedents` | `{finding_id, rule_id?, channel?, pattern_text, reason, valid_to?}`; requires an existing reasoned reviewer override; omitted channel defaults to the overridden content's channel | `201 {id, finding_id, rule_id, channel, pattern_text, reason, status: pending, valid_to}`; embedding and workspace/rule/channel scope are stored | reviewer, manager, admin |
@@ -115,7 +115,7 @@ This contract describes the routes currently registered by the FastAPI applicati
 
 | Method and path | Request | Success response | Allowed roles |
 |---|---|---|---|
-| `GET /api/insights/summary` | None | `{workspace_id, total_items, approved_items, total_findings, severity_distribution, overrides_total, disputes_total, expiring_facts_count, average_approval_hours, average_review_rounds, model_mode, is_seeded_reference}`. `is_seeded_reference` is true when no approval durations are present. | Any authenticated role |
+| `GET /api/insights/summary` | None | `{workspace_id, total_items, approved_items, total_findings, severity_distribution, overrides_total, disputes_total, expiring_facts_count, average_approval_hours, average_review_rounds, model_mode, is_seeded_reference}`. `average_approval_hours` and `average_review_rounds` are `null` when no approval or review history exists (`is_seeded_reference` is `false`). | Any authenticated role |
 | `GET /api/insights/top-rules` | Query: `group_by=channel|creator|week` (default `channel`) | `{group_by, data: [{channel|creator|week, rule_code, count}]}` | Any authenticated role |
 | `GET /api/insights/override-rates` | None | `{rules: [{rule_code, overrides, disputes, total, override_rate_pct, dispute_rate_pct}]}` | Any authenticated role |
 | `GET /api/insights/expiring-facts` | None | `{facts: [{id, code, statement, valid_to, days_remaining, is_expired, requires_review}]}` | Any authenticated role |

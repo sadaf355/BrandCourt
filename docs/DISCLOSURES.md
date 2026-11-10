@@ -34,7 +34,7 @@ BrandCourt does not connect to, manage or publish content to third-party adverti
 
 ## Deployment limitations
 
-The hosted demo runs APP_ENV=staging with local disk storage, so uploaded files are lost on restart; the free-tier API sleeps when idle; the hosted instance runs MODEL_MODE=deterministic so Ollama variants were not exercised there; the fact-expiry scheduler runs only under Docker Compose, not on the hosted API.
+The hosted demo runs APP_ENV=staging with local disk storage, so uploaded files are lost on restart; the free-tier API sleeps when idle; the hosted instance runs MODEL_MODE=deterministic so Ollama variants were not exercised there; daily fact expiry runs inside the background worker loop every 24 hours when `JOB_WORKER_ENABLED=true` (and via `scripts.expire_facts` under Docker Compose).
 
 ## Round 3 — additional evaluation and product limitations (9 November 2026)
 
@@ -45,7 +45,7 @@ The hosted demo runs APP_ENV=staging with local disk storage, so uploaded files 
 - **Images:** expected visual labels are not image evidence. Five actual creative image files must be run through the configured upload, OCR and image-analysis path before image performance is reported.
 - **Language coverage:** Hindi/Marathi and mixed-language content may have limited automated coverage. The UI asks for a fluent human review; no broad multilingual accuracy guarantee is made.
 - **Workflow scope:** comment resolving, email invitations, member removal and workspace deletion are not exposed as complete end-to-end product actions. Member creation and role changes are distinct from email invitations.
-- **Analytics:** channel/creator/week aggregations and approval-duration calculations are based on stored workspace records. Where no real approval history exists, seeded reference values may be shown and must not be mistaken for measured operational performance. Team-level analytics are not supported by the current data model.
+- **Analytics:** channel/creator/week aggregations and approval-duration calculations are based on stored workspace records. When no approval history exists, the dashboard displays `"No approvals yet"` instead of seeded fallback numbers. Team-level analytics are not supported by the current data model.
 - **Accessibility and speed:** axe-core is a dependency, not evidence of a completed audit. The 15-second text and 30-second image targets have not been validated in production-like load tests.
 - **Human evidence:** no user sessions, manual-vs-product timing study, or demo video was generated as part of this code update. Do not represent these as completed research.
 - **Competitor review:** the competitor pack is based on public vendor materials and is not a hands-on comparison or independent feature verification.

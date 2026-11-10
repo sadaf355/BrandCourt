@@ -1,0 +1,12 @@
+{
+  "status_code": 201,
+  "body": {
+    "issue_key": "3716a003e4b79651b5f2f76208c7508cd6c53b50973c7f6a37da38283da6f60c",
+    "action": "accept",
+    "rule_changed": true,
+    "new_rule_id": "943732e2-f83c-45f6-87c4-b716b35c4995",
+    "new_rule_version": 2,
+    "new_rule_status": "draft",
+    "message": "A new draft version was created. The current rule stays active until a guideline owner confirms the draft."
+  }
+}

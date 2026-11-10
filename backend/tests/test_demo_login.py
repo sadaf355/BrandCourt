@@ -230,3 +230,55 @@ def test_demo_login_rate_limiting(api_client, test_database, tmp_path: Path, mon
     assert r_blocked.status_code == 429
     assert "Too many sign-in attempts" in r_blocked.json()["detail"]
 
+
+def test_demo_login_never_issues_token_for_non_demo_workspace(
+    api_client, test_database, monkeypatch
+):
+    from app.services.demo_workspace import get_demo_workspace_id
+
+    # Register a regular (non-demo) workspace whose admin uses the same email configured as demo_admin_email
+    reg_resp = api_client(
+        "POST",
+        "/api/auth/register-workspace",
+        json={
+            "workspace_name": "Real Customer Org",
+            "full_name": "Customer Admin",
+            "email": "real-owner@customer.example",
+            "password": "StrongCustomerPassword!2026",
+        },
+    )
+    assert reg_resp.status_code == 201, reg_resp.text
+    real_ws_id = reg_resp.json()["user"]["workspace_id"]
+
+    # Also test a non-demo workspace holding a demo email without is_demo=True
+    async def create_non_demo_with_demo_email():
+        async with test_database() as db:
+            non_demo_ws = Workspace(
+                name="Non-Demo Collision",
+                settings={"is_demo": False},
+            )
+            db.add(non_demo_ws)
+            await db.flush()
+            db.add(
+                User(
+                    workspace_id=non_demo_ws.id,
+                    email=settings.demo_admin_email,
+                    full_name="Not Demo",
+                    password_hash="x",
+                    role="admin",
+                    is_active=True,
+                )
+            )
+            await db.commit()
+            return await get_demo_workspace_id(db), non_demo_ws.id
+
+    detected_demo_ws, non_demo_ws_id = asyncio.run(create_non_demo_with_demo_email())
+    assert detected_demo_ws is None
+    assert non_demo_ws_id != real_ws_id
+
+    monkeypatch.setattr(settings, "demo_login_enabled", True)
+    set_demo_ready(True)
+    resp = api_client("POST", "/api/auth/demo-login", json={"role": "admin"})
+    assert resp.status_code == 503
+    assert "access_token" not in resp.json()
+

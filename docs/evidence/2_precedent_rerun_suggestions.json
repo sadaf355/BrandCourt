@@ -1,0 +1,139 @@
+{
+  "job": {
+    "job_id": "406a2935-97f9-41e0-9e28-fee3f7137b1d",
+    "content_id": "ad3f8617-ff66-4c13-ad92-55a3d5f11351",
+    "revision_id": "91ae94d5-4c65-4930-abbf-420041050d4f",
+    "status": "completed",
+    "progress": 100,
+    "stage": "Analysis complete",
+    "result": {
+      "content_id": "ad3f8617-ff66-4c13-ad92-55a3d5f11351",
+      "revision_id": "91ae94d5-4c65-4930-abbf-420041050d4f",
+      "revision_version": 1,
+      "analysis_method": "deterministic_v2",
+      "evaluation_variant": null,
+      "language": {
+        "language": "en",
+        "support": "supported",
+        "method": "script_and_lexicon_heuristic"
+      },
+      "privacy": {
+        "masked_entities_for_model_input": 0,
+        "external_model_called": false,
+        "local_model_called": false
+      },
+      "notice": "Deterministic checks with exact comparisons and advisory India starter policy checks. This is not legal advice; human review is required.",
+      "findings": [
+        {
+          "id": "74538398-7b33-4052-b045-540b15613a92",
+          "content_id": "ad3f8617-ff66-4c13-ad92-55a3d5f11351",
+          "revision_id": "91ae94d5-4c65-4930-abbf-420041050d4f",
+          "claim_text": "Discover our winter glow secret with GlowSerum.",
+          "verdict": "needs_human_review",
+          "rationale": "An active workspace rule (EVID-TERM-MAJOR) applies; a reviewer must confirm this content.",
+          "evidence": [
+            {
+              "type": "active_rule",
+              "id": "b94eb31d-323a-480b-80ee-30378ede124c",
+              "code": "EVID-TERM-MAJOR",
+              "title": "Avoid unapproved seasonal slogan",
+              "text": "Do not use 'winter glow secret' without seasonal campaign tag.",
+              "version": 1,
+              "severity": "major",
+              "source_ref": "Evidence test rule"
+            },
+            {
+              "type": "approved_precedent",
+              "id": "b168545b-7018-4ab1-adb5-8c8d36a624f8",
+              "rule_id": "b94eb31d-323a-480b-80ee-30378ede124c",
+              "channel": "instagram",
+              "pattern_text": "Discover our winter glow secret with GlowSerum.",
+              "reason": "Seasonal Instagram campaign approved this slogan for Q4.",
+              "valid_to": null,
+              "match_score": 1.0,
+              "notice": "Advisory only; reviewer confirmation is required and verdict/severity are unchanged."
+            }
+          ],
+          "severity": "major",
+          "layer": "claims",
+          "span_start": 0,
+          "span_end": 47,
+          "region": null,
+          "suggested_fix": "Attach a current approved fact or revise the claim.",
+          "intent_preserved": null,
+          "analysis_method": "deterministic_v2",
+          "state": "open",
+          "created_at": "2026-11-10T10:22:30.994728+00:00"
+        }
+      ],
+      "summary": {
+        "supported": 0,
+        "contradicted": 0,
+        "outdated": 0,
+        "unsupported": 0,
+        "needs_human_review": 1
+      }
+    },
+    "error": null,
+    "created_at": "2026-11-10T10:22:29.059507",
+    "started_at": "2026-11-10T10:22:30.340286",
+    "finished_at": "2026-11-10T10:22:31.026624"
+  },
+  "finding_after_rerun": {
+    "id": "74538398-7b33-4052-b045-540b15613a92",
+    "content_id": "ad3f8617-ff66-4c13-ad92-55a3d5f11351",
+    "revision_id": "91ae94d5-4c65-4930-abbf-420041050d4f",
+    "claim_text": "Discover our winter glow secret with GlowSerum.",
+    "verdict": "needs_human_review",
+    "rationale": "An active workspace rule (EVID-TERM-MAJOR) applies; a reviewer must confirm this content.",
+    "evidence": [
+      {
+        "type": "active_rule",
+        "id": "b94eb31d-323a-480b-80ee-30378ede124c",
+        "code": "EVID-TERM-MAJOR",
+        "title": "Avoid unapproved seasonal slogan",
+        "text": "Do not use 'winter glow secret' without seasonal campaign tag.",
+        "version": 1,
+        "severity": "major",
+        "source_ref": "Evidence test rule"
+      },
+      {
+        "type": "approved_precedent",
+        "id": "b168545b-7018-4ab1-adb5-8c8d36a624f8",
+        "rule_id": "b94eb31d-323a-480b-80ee-30378ede124c",
+        "channel": "instagram",
+        "pattern_text": "Discover our winter glow secret with GlowSerum.",
+        "reason": "Seasonal Instagram campaign approved this slogan for Q4.",
+        "valid_to": null,
+        "match_score": 1.0,
+        "notice": "Advisory only; reviewer confirmation is required and verdict/severity are unchanged."
+      }
+    ],
+    "severity": "major",
+    "layer": "claims",
+    "span_start": 0,
+    "span_end": 47,
+    "region": null,
+    "suggested_fix": "Attach a current approved fact or revise the claim.",
+    "intent_preserved": null,
+    "analysis_method": "deterministic_v2",
+    "state": "open",
+    "created_at": "2026-11-10T10:22:30.994728"
+  },
+  "precedent_suggestions": {
+    "finding_id": "74538398-7b33-4052-b045-540b15613a92",
+    "suggestions": [
+      {
+        "precedent_id": "b168545b-7018-4ab1-adb5-8c8d36a624f8",
+        "rule_id": "b94eb31d-323a-480b-80ee-30378ede124c",
+        "channel": "instagram",
+        "reason": "Seasonal Instagram campaign approved this slogan for Q4.",
+        "pattern_text": "Discover our winter glow secret with GlowSerum.",
+        "similarity": 1.0,
+        "suggested_severity": "advisory",
+        "requires_reviewer_confirmation": true,
+        "message": "This approved precedent may support an advisory downgrade; a reviewer must confirm."
+      }
+    ]
+  }
+}

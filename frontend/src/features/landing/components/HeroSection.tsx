@@ -84,7 +84,7 @@ export function HeroSection() {
           </motion.div>
         </motion.div>
 
-        <div className="landing-hero__visual" aria-label="Interactive 3D BrandCourt Shield">
+        <div className="landing-hero__visual" role="img" aria-label="Interactive 3D BrandCourt Shield">
           <HeroShieldView />
         </div>
       </div>

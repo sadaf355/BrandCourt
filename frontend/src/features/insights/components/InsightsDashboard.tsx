@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   BarChart,
@@ -18,7 +18,6 @@ import {
   FileText,
   Clock,
   RotateCcw,
-  AlertTriangle,
   Calendar,
   CheckCircle2,
   FileCheck,
@@ -74,10 +73,14 @@ export function InsightsDashboard() {
     queryFn: () => apiClient.listContent(),
   })
 
-  const approvedItems = contentList.filter((c) => c.status === 'approved' || c.id === 'cnt-glowserum-1')
-  const [selectedContentId, setSelectedContentId] = useState<string>(
-    approvedItems[0]?.id || 'cnt-glowserum-1'
-  )
+  const approvedItems = contentList.filter((c) => c.status === 'approved')
+  const [selectedContentId, setSelectedContentId] = useState<string>('')
+
+  useEffect(() => {
+    if (!selectedContentId && approvedItems.length > 0) {
+      setSelectedContentId(approvedItems[0].id)
+    }
+  }, [approvedItems, selectedContentId])
 
   const handleDownloadJson = async () => {
     try {
@@ -154,7 +157,7 @@ export function InsightsDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
             <TrendingUp className="text-indigo-400" size={26} />
             Governance Analytics & Reports
           </h1>
@@ -162,13 +165,6 @@ export function InsightsDashboard() {
             Real-time compliance intelligence derived directly from database audit and decision records.
           </p>
         </div>
-
-        {summary?.is_seeded_reference && (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20">
-            <AlertTriangle size={13} />
-            Labelled Starter Baseline Data
-          </span>
-        )}
       </div>
 
       {/* KPI Cards */}
@@ -184,8 +180,10 @@ export function InsightsDashboard() {
           value={
             loadingSummary ? (
               <Skeleton width="50px" height="28px" />
+            ) : summary?.average_approval_hours != null ? (
+              `${summary.average_approval_hours} hrs`
             ) : (
-              `${summary?.average_approval_hours ?? 0} hrs`
+              'No approvals yet'
             )
           }
           subtext="From submission to lock"
@@ -196,8 +194,10 @@ export function InsightsDashboard() {
           value={
             loadingSummary ? (
               <Skeleton width="50px" height="28px" />
+            ) : summary?.average_review_rounds != null ? (
+              `${summary.average_review_rounds}`
             ) : (
-              `${summary?.average_review_rounds ?? 0}`
+              'No reviews yet'
             )
           }
           subtext="Avg revisions before lock"
@@ -220,7 +220,7 @@ export function InsightsDashboard() {
       {/* Report Download Panel */}
       <div className="p-5 rounded-xl border border-slate-700/60 bg-slate-900/60 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-white flex items-center gap-2">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <FileText size={18} className="text-indigo-400" />
             Approved Revision Compliance Reports (PDF & JSON)
           </h2>
@@ -235,19 +235,24 @@ export function InsightsDashboard() {
           <select
             value={selectedContentId}
             onChange={(e) => setSelectedContentId(e.target.value)}
-            className="text-xs bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            aria-label="Approved content item for report export"
+            className="text-xs bg-white dark:bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
           >
-            {approvedItems.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.title} (Approved)
-              </option>
-            ))}
+            {approvedItems.length === 0 ? (
+              <option value="">No approved content yet</option>
+            ) : (
+              approvedItems.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.title} (Approved)
+                </option>
+              ))
+            )}
           </select>
 
           <button
             onClick={handleDownloadJson}
-            disabled={downloadingJson}
-            className="px-3.5 py-2 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+            disabled={downloadingJson || !selectedContentId}
+            className="px-3.5 py-2 rounded-lg text-xs font-medium bg-white dark:bg-slate-800 text-gray-900 dark:text-white border border-slate-700 flex items-center gap-1.5 transition-colors disabled:opacity-50"
           >
             <Download size={14} />
             {downloadingJson ? 'Exporting JSON...' : 'Download JSON'}
@@ -255,7 +260,7 @@ export function InsightsDashboard() {
 
           <button
             onClick={handleDownloadPdf}
-            disabled={downloadingPdf}
+            disabled={downloadingPdf || !selectedContentId}
             className="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50"
           >
             <Download size={14} />
@@ -270,7 +275,7 @@ export function InsightsDashboard() {
         <div className="lg:col-span-2 p-5 rounded-xl border border-slate-800 bg-slate-900/40">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-white">Top Rules Broken</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Top Rules Broken</h3>
               <p className="text-xs text-slate-400">Frequency of guideline triggers across content</p>
             </div>
             <div className="flex items-center gap-1 bg-slate-800 p-0.5 rounded-lg border border-slate-700/60">
@@ -279,7 +284,7 @@ export function InsightsDashboard() {
                   key={mode}
                   onClick={() => setGroupBy(mode)}
                   className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
-                    groupBy === mode ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                    groupBy === mode ? 'bg-indigo-600 text-white' : 'text-gray-700 dark:text-slate-300'
                   }`}
                 >
                   {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -291,6 +296,10 @@ export function InsightsDashboard() {
           <div className="h-64 w-full">
             {loadingTopRules ? (
               <Skeleton height="100%" />
+            ) : topRulesBarData.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-xs text-slate-400">
+                No rule triggers recorded yet
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topRulesBarData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
@@ -308,14 +317,14 @@ export function InsightsDashboard() {
 
         {/* Findings by Severity (Donut Chart) */}
         <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/40">
-          <h3 className="text-sm font-semibold text-white mb-1">Findings by Severity</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Findings by Severity</h3>
           <p className="text-xs text-slate-400 mb-4">Total findings distribution across all active reviews</p>
 
           <div className="h-64 w-full">
             {loadingSummary ? (
               <Skeleton height="100%" />
             ) : severityPieData.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-xs text-slate-500">No findings logged yet</div>
+              <div className="flex items-center justify-center h-full text-xs text-slate-400">No findings logged yet</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -349,7 +358,7 @@ export function InsightsDashboard() {
         {/* Override & Dispute Rates */}
         <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/40">
           <div className="mb-4">
-            <h3 className="text-sm font-semibold text-white">Override & Dispute Rate by Rule</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Override & Dispute Rate by Rule</h3>
             <p className="text-xs text-slate-400">
               Rules with high reviewer overrides often indicate wording ambiguity or missing brand facts.
             </p>
@@ -358,6 +367,10 @@ export function InsightsDashboard() {
           <div className="h-60 w-full">
             {loadingOverrides ? (
               <Skeleton height="100%" />
+            ) : overrideBarData.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-xs text-slate-400">
+                No overrides or disputes logged yet
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={overrideBarData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
@@ -379,7 +392,7 @@ export function InsightsDashboard() {
         <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/40">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <Calendar size={16} className="text-amber-400" />
                 Expiring Facts Watchlist
               </h3>
@@ -395,7 +408,7 @@ export function InsightsDashboard() {
           {loadingFacts ? (
             <Skeleton height="160px" />
           ) : (expiringFacts?.facts || []).length === 0 ? (
-            <div className="p-6 text-center text-xs text-slate-500">All brand facts are up to date with valid expiry dates.</div>
+            <div className="p-6 text-center text-xs text-slate-400">All brand facts are up to date with valid expiry dates.</div>
           ) : (
             <div className="space-y-2.5">
               {expiringFacts?.facts.map((fact) => (
@@ -404,7 +417,7 @@ export function InsightsDashboard() {
                   className="p-3 rounded-lg border border-slate-800 bg-slate-900/80 flex items-start justify-between gap-3 text-xs"
                 >
                   <div>
-                    <span className="font-semibold text-white">{fact.code}:</span>{' '}
+                    <span className="font-semibold text-gray-900 dark:text-white">{fact.code}:</span>{' '}
                     <span className="text-slate-300">{fact.statement}</span>
                     <div className="text-[11px] text-slate-400 mt-1">
                       Valid until: {fact.valid_to ? fact.valid_to.slice(0, 10) : 'N/A'}
@@ -446,7 +459,7 @@ function KpiCard({
         <span className="text-xs font-medium text-slate-400">{label}</span>
         {icon}
       </div>
-      <div className="text-2xl font-bold text-white">{value}</div>
+      <div className="text-2xl font-bold text-gray-900 dark:text-white">{value}</div>
       <div className="text-[11px] text-slate-400 mt-1">{subtext}</div>
     </div>
   )

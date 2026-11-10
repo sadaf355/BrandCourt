@@ -126,12 +126,12 @@ async def get_insights_summary(user: CurrentUser, db: DBSession):
     avg_approval_hours = (
         round(sum(approval_durations) / len(approval_durations) / 3600, 1)
         if approval_durations
-        else 4.2  # labeled fallback if no historical audit
+        else None
     )
     avg_rounds = (
         round(sum(review_rounds.values()) / max(1, len(review_rounds)), 1)
         if review_rounds
-        else 1.4
+        else None
     )
 
     return {
@@ -146,7 +146,7 @@ async def get_insights_summary(user: CurrentUser, db: DBSession):
         "average_approval_hours": avg_approval_hours,
         "average_review_rounds": avg_rounds,
         "model_mode": effective_model_mode,
-        "is_seeded_reference": len(approval_durations) == 0,
+        "is_seeded_reference": False,
     }
 
 
@@ -209,15 +209,6 @@ async def get_top_rules_broken(
         top = sorted(rule_counts.items(), key=lambda x: x[1], reverse=True)[:5]
         for r_code, count in top:
             formatted.append({group_by: seg, "rule_code": r_code, "count": count})
-
-    # Default fallback data if empty workspace
-    if not formatted:
-        formatted = [
-            {group_by: "instagram", "rule_code": "IN-ASCI-01", "count": 12},
-            {group_by: "instagram", "rule_code": "CLM-PERC-04", "count": 7},
-            {group_by: "website", "rule_code": "RUL-CLINICAL-02", "count": 5},
-            {group_by: "linkedin", "rule_code": "TONE-HYPER-01", "count": 3},
-        ]
 
     return {"group_by": group_by, "data": formatted}
 
@@ -285,13 +276,6 @@ async def get_override_dispute_rates(user: CurrentUser, db: DBSession):
         )
 
     result.sort(key=lambda x: x["overrides"] + x["disputes"], reverse=True)
-
-    if not result:
-        result = [
-            {"rule_code": "IN-ASCI-01", "overrides": 3, "disputes": 2, "total": 14, "override_rate_pct": 21.4, "dispute_rate_pct": 14.3},
-            {"rule_code": "TONE-HYPER-01", "overrides": 5, "disputes": 1, "total": 11, "override_rate_pct": 45.5, "dispute_rate_pct": 9.1},
-            {"rule_code": "RUL-CLINICAL-02", "overrides": 1, "disputes": 0, "total": 8, "override_rate_pct": 12.5, "dispute_rate_pct": 0.0},
-        ]
 
     return {"rules": result}
 

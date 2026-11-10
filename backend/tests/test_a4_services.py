@@ -232,3 +232,75 @@ def test_safe_replacements_for_cure_and_guaranteed_result_claims():
     assert "may help improve the appearance" in cure.candidate_text.lower()
     assert "guaranteed results" not in guarantee.candidate_text.lower()
     assert "results may vary" in guarantee.candidate_text.lower()
+
+
+def test_worker_loop_periodic_fact_expiry_runs_daily(test_database, workspace_users):
+    from app.core.job_worker import maybe_run_fact_expiry
+
+    users, _content_id, workspace_ids = workspace_users
+    t0 = datetime(2026, 11, 7, 12, 0, tzinfo=timezone.utc)
+
+    async def insert_expiring_fact():
+        async with test_database() as db:
+            db.add(
+                Fact(
+                    workspace_id=workspace_ids[1],
+                    code="WORKER-EXPIRED",
+                    statement="Worker expiry test fact",
+                    value="1",
+                    valid_to=t0 - timedelta(days=1),
+                    source_ref="test",
+                    version=1,
+                    status="active",
+                    created_by=users[(1, "admin")],
+                )
+            )
+            await db.commit()
+
+    asyncio.run(insert_expiring_fact())
+
+    # First tick runs immediately when last_run_at is None
+    ran_at = asyncio.run(maybe_run_fact_expiry(None, now=t0, sessions=test_database))
+    assert ran_at == t0
+
+    async def insert_second_expired_fact():
+        async with test_database() as db:
+            db.add(
+                Fact(
+                    workspace_id=workspace_ids[1],
+                    code="WORKER-EXPIRED-2",
+                    statement="Second expired fact",
+                    value="2",
+                    valid_to=t0,
+                    source_ref="test",
+                    version=1,
+                    status="active",
+                    created_by=users[(1, "admin")],
+                )
+            )
+            await db.commit()
+
+    asyncio.run(insert_second_expired_fact())
+
+    # Within 24h window: skipped (second fact remains active)
+    skipped_at = asyncio.run(
+        maybe_run_fact_expiry(ran_at, now=t0 + timedelta(hours=23), sessions=test_database)
+    )
+    assert skipped_at == t0
+
+    async def fetch_status(code: str) -> str:
+        async with test_database() as db:
+            row = await db.scalar(
+                select(Fact).where(Fact.workspace_id == workspace_ids[1], Fact.code == code)
+            )
+            return row.status
+
+    assert asyncio.run(fetch_status("WORKER-EXPIRED")) == "expired"
+    assert asyncio.run(fetch_status("WORKER-EXPIRED-2")) == "active"
+
+    # After 24h elapsed: runs again and expires second fact
+    ran_again_at = asyncio.run(
+        maybe_run_fact_expiry(skipped_at, now=t0 + timedelta(hours=24), sessions=test_database)
+    )
+    assert ran_again_at == t0 + timedelta(hours=24)
+    assert asyncio.run(fetch_status("WORKER-EXPIRED-2")) == "expired"

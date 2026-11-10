@@ -1,0 +1,235 @@
+{
+  "content": {
+    "id": "258fc64a-9ea2-455e-8cec-a34c9a1ac3b1",
+    "title": "GlowSerum Launch Instagram Reel",
+    "channel": "instagram",
+    "campaign": "Festive Radiance 2026",
+    "status": "draft",
+    "current_revision": 1,
+    "created_by": "60fe99ff-f70b-4a48-9566-2217986e5054",
+    "created_at": "2026-11-10T10:22:36.512228",
+    "updated_at": "2026-11-10T10:22:36.512228",
+    "revision": {
+      "id": "c4fa459c-3279-4eaa-b724-546b52148147",
+      "content_id": "258fc64a-9ea2-455e-8cec-a34c9a1ac3b1",
+      "version": 1,
+      "caption": "Experience India's #1 radiant skin formula! Our clinically proven GlowSerum cures acne and lightens dark spots in just 28 days with 100% natural organic saffron extracts. Dermatologist tested and guaranteed results. Shop now.",
+      "creative_filename": null,
+      "ocr_status": "not_run",
+      "ocr_text": "",
+      "alt_text": "Bottle of Aurora GlowSerum with saffron dropper",
+      "is_ai_media": false,
+      "paid_gifted": false,
+      "detected_language": "en",
+      "image_analysis": null,
+      "created_by": "60fe99ff-f70b-4a48-9566-2217986e5054",
+      "created_at": "2026-11-10T10:22:36.512228+00:00"
+    }
+  },
+  "finding_before": {
+    "id": "3a558ca4-f8df-49ff-8ce2-a85250fb2cff",
+    "content_id": "258fc64a-9ea2-455e-8cec-a34c9a1ac3b1",
+    "revision_id": "c4fa459c-3279-4eaa-b724-546b52148147",
+    "claim_text": "Our clinically proven GlowSerum cures acne and lightens dark spots in just 28 days with 100% natural organic saffron extracts.",
+    "verdict": "unsupported",
+    "rationale": "Potentially restricted cure or guaranteed-result claim. BrandCourt routes this to human/legal review; it is not a legal determination.",
+    "evidence": [
+      {
+        "type": "brand_term_list",
+        "id": "d07eab03-63f7-403a-9f47-93ff18800fef",
+        "code": "BRAND-BANNED-TERM",
+        "title": "GlowSerum banned terms",
+        "text": "Banned term matched: cures acne",
+        "source_ref": "Workspace brand term list"
+      },
+      {
+        "type": "policy_pack",
+        "code": "IN-5",
+        "title": "India starter guidance",
+        "text": "Potentially restricted cure or guaranteed-result claim. BrandCourt routes this to human/legal review; it is not a legal determination.",
+        "source_ref": "BrandCourt starter policy pack (advisory; not legal advice)"
+      },
+      {
+        "type": "policy_pack",
+        "code": "IN-1",
+        "title": "required_text",
+        "text": "A factual or performance claim may need a traceable approved source; no source is attached. This is not a finding that it is false.",
+        "source_ref": "BrandCourt India starter guidance (not legal advice)"
+      },
+      {
+        "type": "policy_pack",
+        "code": "IN-5",
+        "title": "term",
+        "text": "Potentially restricted cure or guaranteed-result claim. BrandCourt routes this to human/legal review; it is not a legal determination.",
+        "source_ref": "BrandCourt India starter policy pack (advisory; not legal advice)"
+      }
+    ],
+    "severity": "critical",
+    "layer": "claims,rules",
+    "span_start": 44,
+    "span_end": 170,
+    "region": null,
+    "suggested_fix": "Attach a current approved fact or revise the claim.",
+    "intent_preserved": null,
+    "analysis_method": "deterministic_v2",
+    "state": "open",
+    "created_at": "2026-11-10T10:22:39.189196"
+  },
+  "suggest_fix_status": 200,
+  "suggest_fix_response": {
+    "finding_id": "3a558ca4-f8df-49ff-8ce2-a85250fb2cff",
+    "suggested_fix": "Experience India's #1 radiant skin formula! Our clinically proven GlowSerum may help improve the appearance of blemish-prone skin and lightens dark spots in just 28 days with 100% natural organic saffron extracts. Dermatologist tested and guaranteed results. Shop now.",
+    "source_fact_id": null,
+    "method": "safe_claim_language_replacement",
+    "accepted": true,
+    "model_status": "not_requested",
+    "rejection_reason": null,
+    "verification": {
+      "content_id": "258fc64a-9ea2-455e-8cec-a34c9a1ac3b1",
+      "source_revision_id": "c4fa459c-3279-4eaa-b724-546b52148147",
+      "source_revision_version": 1,
+      "candidate_text": "Experience India's #1 radiant skin formula! Our clinically proven GlowSerum may help improve the appearance of blemish-prone skin and lightens dark spots in just 28 days with 100% natural organic saffron extracts. Dermatologist tested and guaranteed results. Shop now.",
+      "similarity": 0.872,
+      "embedding_similarity": 0.8744,
+      "call_to_action_preserved": true,
+      "original_claim_count": 3,
+      "candidate_claim_count": 3,
+      "intent_preserved_claim_count": 3,
+      "changed_claims": [
+        "Our clinically proven GlowSerum cures acne and lightens dark spots in just 28 days with 100% natural organic saffron extracts."
+      ],
+      "intent_preserved": true,
+      "intent_check": {
+        "embedding_similarity": 0.8744,
+        "threshold": 0.8,
+        "call_to_action_present": true,
+        "intent_preserved": true
+      },
+      "full_engine_rerun": true,
+      "candidate_findings": [
+        {
+          "claim_text": "Experience India's #1 radiant skin formula!",
+          "verdict": "unsupported",
+          "severity": "critical",
+          "rationale": "A superlative or #1 claim needs specific, current evidence. No rank-specific proof was established by this baseline; unsupported is not a finding that the claim is false.",
+          "evidence": [
+            {
+              "type": "policy_pack",
+              "code": "IN-2",
+              "title": "India starter guidance",
+              "text": "A superlative or #1 claim needs specific, current evidence. No rank-specific proof was established by this baseline; unsupported is not a finding that the claim is false.",
+              "source_ref": "BrandCourt starter policy pack (advisory; not legal advice)"
+            },
+            {
+              "type": "policy_pack",
+              "code": "IN-2",
+              "title": "pattern",
+              "text": "A superlative or #1 claim needs specific, current evidence. No rank-specific proof was established by this baseline; unsupported is not a finding that the claim is false.",
+              "source_ref": "BrandCourt India starter policy pack (advisory; not legal advice)"
+            }
+          ]
+        },
+        {
+          "claim_text": "Our clinically proven GlowSerum may help improve the appearance of blemish-prone skin and lightens dark spots in just 28 days with 100% natural organic saffron extracts.",
+          "verdict": "unsupported",
+          "severity": "major",
+          "rationale": "No matching approved fact was found. This is unsupported for review, not a finding that the claim is false.",
+          "evidence": [
+            {
+              "type": "policy_pack",
+              "code": "IN-1",
+              "title": "required_text",
+              "text": "A factual or performance claim may need a traceable approved source; no source is attached. This is not a finding that it is false.",
+              "source_ref": "BrandCourt India starter guidance (not legal advice)"
+            }
+          ]
+        },
+        {
+          "claim_text": "Dermatologist tested and guaranteed results.",
+          "verdict": "unsupported",
+          "severity": "major",
+          "rationale": "No matching approved fact was found. This is unsupported for review, not a finding that the claim is false.",
+          "evidence": []
+        },
+        {
+          "claim_text": "Experience India's #1 radiant skin formula! Our clinically proven GlowSerum may help improve the appearance of blemish-prone skin and lightens dark spots in just 28 days with 100% natural organic saffron extracts. Dermatologist tested and guaranteed results. Shop now.",
+          "verdict": "needs_human_review",
+          "severity": "advisory",
+          "rationale": "Absolute or guaranteed language detected; verify it is supportable and on-brand.",
+          "evidence": [
+            {
+              "type": "tone_advisory",
+              "code": "TONE-ABSOLUTE",
+              "text": "Absolute or guaranteed language detected; verify it is supportable and on-brand.",
+              "confidence": null
+            }
+          ]
+        }
+      ],
+      "new_blocking_findings": [],
+      "safe_to_suggest": true,
+      "method": "deterministic_full_engine_candidate_revision",
+      "limitations": [
+        "Intent preservation uses a local hashing embedding and CTA retention, not human-level semantic equivalence.",
+        "Any new critical finding or intent-check failure rejects the suggestion; the candidate is never applied or approved."
+      ]
+    }
+  },
+  "finding_after": {
+    "id": "3a558ca4-f8df-49ff-8ce2-a85250fb2cff",
+    "content_id": "258fc64a-9ea2-455e-8cec-a34c9a1ac3b1",
+    "revision_id": "c4fa459c-3279-4eaa-b724-546b52148147",
+    "claim_text": "Our clinically proven GlowSerum cures acne and lightens dark spots in just 28 days with 100% natural organic saffron extracts.",
+    "verdict": "unsupported",
+    "rationale": "Potentially restricted cure or guaranteed-result claim. BrandCourt routes this to human/legal review; it is not a legal determination.",
+    "evidence": [
+      {
+        "type": "brand_term_list",
+        "id": "d07eab03-63f7-403a-9f47-93ff18800fef",
+        "code": "BRAND-BANNED-TERM",
+        "title": "GlowSerum banned terms",
+        "text": "Banned term matched: cures acne",
+        "source_ref": "Workspace brand term list"
+      },
+      {
+        "type": "policy_pack",
+        "code": "IN-5",
+        "title": "India starter guidance",
+        "text": "Potentially restricted cure or guaranteed-result claim. BrandCourt routes this to human/legal review; it is not a legal determination.",
+        "source_ref": "BrandCourt starter policy pack (advisory; not legal advice)"
+      },
+      {
+        "type": "policy_pack",
+        "code": "IN-1",
+        "title": "required_text",
+        "text": "A factual or performance claim may need a traceable approved source; no source is attached. This is not a finding that it is false.",
+        "source_ref": "BrandCourt India starter guidance (not legal advice)"
+      },
+      {
+        "type": "policy_pack",
+        "code": "IN-5",
+        "title": "term",
+        "text": "Potentially restricted cure or guaranteed-result claim. BrandCourt routes this to human/legal review; it is not a legal determination.",
+        "source_ref": "BrandCourt India starter policy pack (advisory; not legal advice)"
+      }
+    ],
+    "severity": "critical",
+    "layer": "claims,rules",
+    "span_start": 44,
+    "span_end": 170,
+    "region": null,
+    "suggested_fix": "Experience India's #1 radiant skin formula! Our clinically proven GlowSerum may help improve the appearance of blemish-prone skin and lightens dark spots in just 28 days with 100% natural organic saffron extracts. Dermatologist tested and guaranteed results. Shop now.",
+    "intent_preserved": {
+      "purpose": "Original communication intent",
+      "cta": "Preserved",
+      "claims_changed": [
+        "Our clinically proven GlowSerum cures acne and lightens dark spots in just 28 days with 100% natural organic saffron extracts."
+      ],
+      "safe": true,
+      "embedding_similarity": 0.8744
+    },
+    "analysis_method": "deterministic_v2",
+    "state": "open",
+    "created_at": "2026-11-10T10:22:39.189196"
+  }
+}

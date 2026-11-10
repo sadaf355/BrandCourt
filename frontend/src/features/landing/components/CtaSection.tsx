@@ -44,7 +44,7 @@ export function CtaSection() {
         <footer className="landing-footer" role="contentinfo">
           <div className="landing-footer__main">
             <div className="landing-footer__brand">
-              <Link to="/" className="brand-lockup" aria-label="BrandCourt Home">
+              <Link to="/" className="brand-lockup">
                 <span className="brand-mark"><ShieldCheck size={20} strokeWidth={2.1} /></span>
                 <span className="brand-word">
                   BrandCourt<span className="brand-period">.</span>

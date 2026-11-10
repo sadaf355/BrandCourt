@@ -1,0 +1,42 @@
+{
+  "finding": {
+    "id": "b81a0f84-ea9b-42dc-aa7c-df078f1952f4",
+    "content_id": "ad3f8617-ff66-4c13-ad92-55a3d5f11351",
+    "revision_id": "91ae94d5-4c65-4930-abbf-420041050d4f",
+    "claim_text": "Discover our winter glow secret with GlowSerum.",
+    "verdict": "needs_human_review",
+    "rationale": "An active workspace rule (EVID-TERM-MAJOR) applies; a reviewer must confirm this content.",
+    "evidence": [
+      {
+        "type": "active_rule",
+        "id": "b94eb31d-323a-480b-80ee-30378ede124c",
+        "code": "EVID-TERM-MAJOR",
+        "title": "Avoid unapproved seasonal slogan",
+        "text": "Do not use 'winter glow secret' without seasonal campaign tag.",
+        "version": 1,
+        "severity": "major",
+        "source_ref": "Evidence test rule"
+      }
+    ],
+    "severity": "major",
+    "layer": "claims",
+    "span_start": 0,
+    "span_end": 47,
+    "region": null,
+    "suggested_fix": "Attach a current approved fact or revise the claim.",
+    "intent_preserved": null,
+    "analysis_method": "deterministic_v2",
+    "state": "open",
+    "created_at": "2026-11-10T10:22:28.258674"
+  },
+  "decision_status": 201,
+  "decision": {
+    "id": "28ee745f-5fd8-4b0e-b5cc-b99f86810bde",
+    "finding_id": "b81a0f84-ea9b-42dc-aa7c-df078f1952f4",
+    "action": "override",
+    "reason": "Seasonal Instagram campaign approved this slogan for Q4.",
+    "user_id": "ecde05f4-9fa7-431b-a264-f5974ee41085",
+    "state": "overridden",
+    "created_at": "2026-11-10T10:22:28.917463"
+  }
+}

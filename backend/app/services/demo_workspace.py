@@ -114,23 +114,13 @@ def set_demo_ready(ready: bool) -> None:
 
 
 async def get_demo_workspace_id(db: Any) -> str | None:
-    """Find the single workspace marked is_demo."""
+    """Find the single workspace explicitly marked is_demo."""
     workspaces = (await db.scalars(select(Workspace))).all()
     for ws in workspaces:
         ws_settings = dict(ws.settings or {})
         if ws_settings.get("is_demo") is True:
             return ws.id
-    # Fallback to workspace containing demo users
-    user = await db.scalar(
-        select(User).where(
-            User.email.in_([
-                settings.demo_admin_email,
-                "creator@demo.local",
-                "creator@glowserum.com",
-            ])
-        ).limit(1)
-    )
-    return user.workspace_id if user else None
+    return None
 
 
 def _generate_demo_f_image_bytes() -> bytes:

@@ -91,6 +91,52 @@ export function getHealth(signal?: AbortSignal) {
   return api<HealthPayload>('/health', { signal })
 }
 
+function normalizeRule(raw: any): RuleWithHistory {
+  const channels = Array.isArray(raw.channels) ? raw.channels : []
+  const code = String(raw.code ?? '')
+  const sourceRef = String(raw.source_ref ?? '')
+  return {
+    ...raw,
+    name: raw.name ?? raw.title ?? (code || 'Untitled Rule'),
+    description: raw.description ?? raw.text ?? '',
+    rule_type: raw.rule_type ?? raw.type ?? 'brand_voice',
+    channel_scope: raw.channel_scope ?? (channels.length ? channels.join(', ') : 'all'),
+    is_india_pack:
+      raw.is_india_pack ?? (code.startsWith('IN-') || sourceRef.toLowerCase().includes('india')),
+    source_page: raw.source_page ?? raw.source_ref,
+  }
+}
+
+function normalizeFact(raw: any): FactWithHistory {
+  const validUntil = raw.valid_until ?? raw.valid_to ?? undefined
+  let expiryWarning = raw.expiry_warning
+  if (expiryWarning == null && validUntil) {
+    const daysLeft = (new Date(validUntil).getTime() - Date.now()) / 86400000
+    expiryWarning = daysLeft >= 0 && daysLeft <= 30
+  }
+  return {
+    ...raw,
+    claim_value: raw.claim_value ?? raw.value ?? '',
+    source_reference: raw.source_reference ?? raw.source_ref ?? '',
+    valid_until: validUntil,
+    expiry_warning: Boolean(expiryWarning),
+  }
+}
+
+function normalizeAsset(raw: any): BrandAsset {
+  const data = raw.content_json ?? raw.data ?? {}
+  const inferredType =
+    raw.asset_type ??
+    (raw.kind === 'other' && raw.name === 'Secret Term List' ? 'secret_terms' : raw.kind) ??
+    'other'
+  return {
+    ...raw,
+    asset_type: inferredType,
+    content_json: data,
+    created_at: raw.created_at ?? raw.updated_at ?? new Date().toISOString(),
+  }
+}
+
 // Unified client switching seamlessly between real API and mockService
 export const apiClient = {
   async getMe(): Promise<User> {
@@ -272,10 +318,6 @@ export const apiClient = {
       body: JSON.stringify({ body, finding_id: findingId }),
     })
   },
-  async resolveComment(contentId: string, commentId: string): Promise<Comment> {
-    if (USE_MOCK) return mockService.resolveComment(contentId, commentId)
-    throw new Error('Comment resolution is not exposed by the published API contract.')
-  },
 
   // ── B3: Notifications ─────────────────────────────────────────────────────
   async listNotifications(): Promise<AppNotification[]> {
@@ -288,21 +330,9 @@ export const apiClient = {
     if (USE_MOCK) return mockService.listMembers()
     return api<WorkspaceMember[]>('/users')
   },
-  async inviteMember(email: string, role: Role): Promise<WorkspaceMember> {
-    if (USE_MOCK) return mockService.inviteMember(email, role)
-    throw new Error('The API contract has user creation, not email invitations. Create a user with full_name, email, password and role.')
-  },
   async changeMemberRole(userId: string, role: Role): Promise<WorkspaceMember> {
     if (USE_MOCK) return mockService.changeMemberRole(userId, role)
     return api<WorkspaceMember>(`/users/${userId}/role?role=${encodeURIComponent(role)}`, { method: 'PATCH' })
-  },
-  async deactivateMember(userId: string): Promise<WorkspaceMember> {
-    if (USE_MOCK) return mockService.deactivateMember(userId)
-    throw new Error('Member deactivation is not exposed by the published API contract.')
-  },
-  async deleteWorkspaceData(reason: string): Promise<{ audit_event_id: string }> {
-    if (USE_MOCK) return mockService.deleteWorkspaceData(reason)
-    throw new Error('Workspace deletion is not exposed by the published API contract.')
   },
 
   // ── B3: Rules ─────────────────────────────────────────────────────────────
@@ -312,23 +342,44 @@ export const apiClient = {
   }): Promise<RuleWithHistory[]> {
     if (USE_MOCK) return mockService.listRules(params)
     const query = params?.status ? `?status=${encodeURIComponent(params.status)}` : ''
-    return api<RuleWithHistory[]>(`/rules${query}`)
+    const rows = await api<any[]>(`/rules${query}`)
+    const normalized = rows.map(normalizeRule)
+    if (params?.is_india_pack) {
+      return normalized.filter((r) => r.is_india_pack)
+    }
+    return normalized
   },
   async updateRule(
     ruleId: string,
-    data: Partial<{ name: string; description: string; status: 'draft' | 'active' | 'retired' }>
+    data: Partial<{ name: string; description: string; severity: 'critical' | 'major' | 'advisory' }>
   ): Promise<RuleWithHistory> {
     if (USE_MOCK) return mockService.updateRule(ruleId, data)
-    return api<RuleWithHistory>(`/rules/${ruleId}`, {
+    const payload: Record<string, unknown> = {}
+    if (data.name !== undefined) payload.title = data.name
+    if (data.description !== undefined) payload.text = data.description
+    if (data.severity !== undefined) payload.severity = data.severity
+    const updated = await api<any>(`/rules/${ruleId}`, {
       method: 'PATCH',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     })
+    return normalizeRule(updated)
+  },
+  async confirmRule(ruleId: string): Promise<RuleWithHistory> {
+    if (USE_MOCK) return mockService.updateRule(ruleId, { status: 'active' })
+    const confirmed = await api<any>(`/rules/${ruleId}/confirm`, { method: 'POST' })
+    return normalizeRule(confirmed)
+  },
+  async retireRule(ruleId: string): Promise<RuleWithHistory> {
+    if (USE_MOCK) return mockService.updateRule(ruleId, { status: 'retired' })
+    const retired = await api<any>(`/rules/${ruleId}/retire`, { method: 'POST' })
+    return normalizeRule(retired)
   },
 
   // ── B3: Facts ─────────────────────────────────────────────────────────────
   async listFacts(): Promise<FactWithHistory[]> {
     if (USE_MOCK) return mockService.listFacts()
-    return api<FactWithHistory[]>('/facts')
+    const rows = await api<any[]>('/facts')
+    return rows.map(normalizeFact)
   },
   async createFact(data: {
     statement: string
@@ -339,23 +390,45 @@ export const apiClient = {
     valid_until?: string
   }): Promise<FactWithHistory> {
     if (USE_MOCK) return mockService.createFact(data)
-    return api<FactWithHistory>('/facts', {
+    const created = await api<any>('/facts', {
       method: 'POST',
-      body: JSON.stringify({ statement: data.statement, value: data.claim_value ?? '', unit: data.unit, source_ref: data.source_reference, valid_from: data.valid_from, valid_to: data.valid_until }),
+      body: JSON.stringify({
+        statement: data.statement,
+        value: data.claim_value || 'Verified',
+        unit: data.unit || undefined,
+        source_ref: data.source_reference,
+        valid_from: data.valid_from || undefined,
+        valid_to: data.valid_until || undefined,
+      }),
     })
+    return normalizeFact(created)
   },
 
   // ── B3: Assets ────────────────────────────────────────────────────────────
   async listAssets(): Promise<BrandAsset[]> {
     if (USE_MOCK) return mockService.listAssets()
-    return api<BrandAsset[]>('/assets')
+    const rows = await api<any[]>('/assets')
+    return rows.map(normalizeAsset)
   },
   async upsertAsset(name: string, assetType: string, contentJson: unknown): Promise<BrandAsset> {
     if (USE_MOCK) return mockService.upsertAsset(name, assetType, contentJson)
-    return api<BrandAsset>('/assets', {
+    const backendKind = assetType === 'secret_terms' ? 'other' : assetType
+    const created = await api<any>('/assets', {
       method: 'POST',
-      body: JSON.stringify({ name, kind: assetType, data: contentJson }),
+      body: JSON.stringify({ name, kind: backendKind, data: contentJson }),
     })
+    return normalizeAsset(created)
+  },
+  async uploadLogoAsset(name: string, file: File): Promise<BrandAsset> {
+    if (USE_MOCK) return mockService.upsertAsset(name, 'logo', { filename: file.name })
+    const form = new FormData()
+    form.append('name', name)
+    form.append('file', file)
+    const created = await api<any>('/assets/logo', {
+      method: 'POST',
+      body: form,
+    })
+    return normalizeAsset(created)
   },
 
   // ── B3: Guidelines ────────────────────────────────────────────────────────
@@ -363,10 +436,33 @@ export const apiClient = {
     if (USE_MOCK) return mockService.uploadGuideline(file)
     const form = new FormData()
     form.append('file', file)
-    return api<GuidelineUploadResult>('/guidelines', {
+    const uploaded = await api<{
+      id: string
+      filename: string
+      extracted_characters: number
+      proposed_rules: number
+      message: string
+    }>('/guidelines', {
       method: 'POST',
       body: form,
     })
+    const draftRows = await api<any[]>('/rules?status=draft')
+    const docDrafts = draftRows
+      .filter((r) => r.document_id === uploaded.id)
+      .map((r) => ({
+        id: r.id,
+        name: r.title ?? r.code ?? 'Proposed rule',
+        description: r.text ?? '',
+        source_page: r.source_ref ?? uploaded.filename,
+        severity: (r.severity ?? 'major') as 'critical' | 'major' | 'advisory',
+      }))
+    return {
+      guideline_id: uploaded.id,
+      source_filename: uploaded.filename,
+      draft_rules: docDrafts,
+      extracted_characters: uploaded.extracted_characters,
+      message: uploaded.message,
+    }
   },
 
   // ── B3: Audit trail ───────────────────────────────────────────────────────
@@ -376,11 +472,25 @@ export const apiClient = {
     offset?: number
   }): Promise<{ events: AuditEvent[]; total: number }> {
     if (USE_MOCK) return mockService.listAuditEvents(params)
-    const q = new URLSearchParams()
-    if (params?.scope) q.set('scope', params.scope)
-    if (params?.limit != null) q.set('limit', String(params.limit))
-    if (params?.offset != null) q.set('offset', String(params.offset))
-    return api<AuditEvent[]>(`/audit-events${params?.limit ? `?limit=${params.limit}` : ''}`).then(events => ({ events, total: events.length }))
+    const requestedLimit = Math.min(200, Math.max(50, (params?.offset ?? 0) + (params?.limit ?? 20)))
+    const rows = await api<any[]>(`/audit-events?limit=${requestedLimit}`)
+    let normalized: AuditEvent[] = rows.map((raw) => ({
+      id: raw.id,
+      user_id: raw.user_id ?? raw.actor_id ?? '',
+      user_name: raw.user_name,
+      action: raw.action ?? raw.type ?? '',
+      details: raw.details ?? raw.payload ?? {},
+      created_at: raw.created_at,
+    }))
+    if (params?.scope === 'rules') {
+      normalized = normalized.filter((e) => e.action.startsWith('rule.') || e.action.startsWith('fact.'))
+    }
+    const offset = params?.offset ?? 0
+    const limit = params?.limit ?? 20
+    return {
+      events: normalized.slice(offset, offset + limit),
+      total: normalized.length,
+    }
   },
 
   // ── B4: Insights & Analytics ──────────────────────────────────────────────

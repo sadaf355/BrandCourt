@@ -1,0 +1,75 @@
+{
+  "content": {
+    "id": "eb3c1bd0-da49-4d70-89f6-66231e4dc5b2",
+    "title": "Clean sample 1",
+    "channel": "website",
+    "campaign": "GlowSerum fictional evaluation set",
+    "status": "draft",
+    "current_revision": 1,
+    "created_by": "73120483-8778-4edc-8c5c-144065270df4",
+    "created_at": "2026-11-10T10:22:23.091046",
+    "updated_at": "2026-11-10T10:22:23.091046"
+  },
+  "proposed_text": "GlowSerum cures eczema and guarantees results. Shop now.",
+  "status_code": 200,
+  "response": {
+    "content_id": "eb3c1bd0-da49-4d70-89f6-66231e4dc5b2",
+    "source_revision_id": "638e6afd-1ccb-4f4f-a82f-12de68328db5",
+    "source_revision_version": 1,
+    "candidate_text": "GlowSerum cures eczema and guarantees results. Shop now.",
+    "similarity": 0.365,
+    "embedding_similarity": 0.1879,
+    "call_to_action_preserved": true,
+    "original_claim_count": 0,
+    "candidate_claim_count": 1,
+    "intent_preserved_claim_count": 0,
+    "changed_claims": [],
+    "intent_preserved": false,
+    "intent_check": {
+      "embedding_similarity": 0.1879,
+      "threshold": 0.8,
+      "call_to_action_present": true,
+      "intent_preserved": false
+    },
+    "full_engine_rerun": true,
+    "candidate_findings": [
+      {
+        "claim_text": "GlowSerum cures eczema and guarantees results.",
+        "verdict": "unsupported",
+        "severity": "critical",
+        "rationale": "Potentially restricted cure or guaranteed-result claim. BrandCourt routes this to human/legal review; it is not a legal determination.",
+        "evidence": [
+          {
+            "type": "policy_pack",
+            "code": "IN-5",
+            "title": "India starter guidance",
+            "text": "Potentially restricted cure or guaranteed-result claim. BrandCourt routes this to human/legal review; it is not a legal determination.",
+            "source_ref": "BrandCourt starter policy pack (advisory; not legal advice)"
+          },
+          {
+            "type": "policy_pack",
+            "code": "IN-5",
+            "title": "term",
+            "text": "Potentially restricted cure or guaranteed-result claim. BrandCourt routes this to human/legal review; it is not a legal determination.",
+            "source_ref": "BrandCourt India starter policy pack (advisory; not legal advice)"
+          }
+        ]
+      }
+    ],
+    "new_blocking_findings": [
+      {
+        "finding_id": "27c1f882-b581-4303-8414-01a66e2be9eb",
+        "verdict": "unsupported",
+        "severity": "critical",
+        "claim_text": "GlowSerum cures eczema and guarantees results.",
+        "rationale": "Potentially restricted cure or guaranteed-result claim. BrandCourt routes this to human/legal review; it is not a legal determination."
+      }
+    ],
+    "safe_to_suggest": false,
+    "method": "deterministic_full_engine_candidate_revision",
+    "limitations": [
+      "Intent preservation uses a local hashing embedding and CTA retention, not human-level semantic equivalence.",
+      "Any new critical finding or intent-check failure rejects the suggestion; the candidate is never applied or approved."
+    ]
+  }
+}

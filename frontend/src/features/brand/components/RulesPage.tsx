@@ -37,11 +37,14 @@ export function RulesPage({ userRole }: { userRole: Role }) {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'draft' | 'active' | 'retired' }) =>
-      apiClient.updateRule(id, { status }),
-    onSuccess: () => {
+    mutationFn: ({ id, status }: { id: string; status: 'active' | 'retired' }) =>
+      status === 'active' ? apiClient.confirmRule(id) : apiClient.retireRule(id),
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['rules'] })
-      showToast('Rule updated.', 'success')
+      showToast(
+        variables.status === 'active' ? 'Rule confirmed active.' : 'Rule retired.',
+        'success'
+      )
     },
     onError: (err: Error) => showToast(err.message, 'error'),
   })

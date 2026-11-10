@@ -274,7 +274,7 @@ export function ReviewDetailPage({ user }: { user: User }) {
               gap: '0.35rem',
               padding: '0.45rem 0.95rem',
               borderRadius: '6px',
-              backgroundColor: 'var(--accent, #6366f1)',
+              backgroundColor: 'var(--btn-primary-bg, #0f766e)',
               color: '#ffffff',
               fontSize: '0.8rem',
               fontWeight: 600,
@@ -302,7 +302,7 @@ export function ReviewDetailPage({ user }: { user: User }) {
                 gap: '0.35rem',
                 padding: '0.45rem 1rem',
                 borderRadius: '6px',
-                backgroundColor: blockerFindings.length > 0 ? '#64748b' : '#3b82f6',
+                backgroundColor: blockerFindings.length > 0 ? '#475569' : '#2563eb',
                 color: '#ffffff',
                 fontSize: '0.8rem',
                 fontWeight: 600,
@@ -338,9 +338,9 @@ export function ReviewDetailPage({ user }: { user: User }) {
             flex: 1,
             padding: '0.5rem',
             borderRadius: '6px',
-            backgroundColor: activeTab === 'content' ? 'var(--accent, #6366f1)' : 'transparent',
+            backgroundColor: activeTab === 'content' ? 'var(--btn-primary-bg, #0f766e)' : 'transparent',
             border: '1px solid var(--color-border, rgba(148, 163, 184, 0.3))',
-            color: '#fff',
+            color: activeTab === 'content' ? '#ffffff' : 'var(--text)',
             fontSize: '0.8rem',
           }}
         >
@@ -352,9 +352,9 @@ export function ReviewDetailPage({ user }: { user: User }) {
             flex: 1,
             padding: '0.5rem',
             borderRadius: '6px',
-            backgroundColor: activeTab === 'findings' ? 'var(--accent, #6366f1)' : 'transparent',
+            backgroundColor: activeTab === 'findings' ? 'var(--btn-primary-bg, #0f766e)' : 'transparent',
             border: '1px solid var(--color-border, rgba(148, 163, 184, 0.3))',
-            color: '#fff',
+            color: activeTab === 'findings' ? '#ffffff' : 'var(--text)',
             fontSize: '0.8rem',
           }}
         >
@@ -366,9 +366,9 @@ export function ReviewDetailPage({ user }: { user: User }) {
             flex: 1,
             padding: '0.5rem',
             borderRadius: '6px',
-            backgroundColor: activeTab === 'evidence' ? 'var(--accent, #6366f1)' : 'transparent',
+            backgroundColor: activeTab === 'evidence' ? 'var(--btn-primary-bg, #0f766e)' : 'transparent',
             border: '1px solid var(--color-border, rgba(148, 163, 184, 0.3))',
-            color: '#fff',
+            color: activeTab === 'evidence' ? '#ffffff' : 'var(--text)',
             fontSize: '0.8rem',
           }}
         >

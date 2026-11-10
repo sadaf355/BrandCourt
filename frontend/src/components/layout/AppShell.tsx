@@ -123,7 +123,7 @@ export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, o
           <NavLink
             to="/app/dashboard"
             className="brand-lockup"
-            aria-label="BrandCourt Home"
+            aria-label={isCollapsed ? 'BrandCourt Home' : undefined}
             title="BrandCourt Home"
           >
             <span className="brand-mark">

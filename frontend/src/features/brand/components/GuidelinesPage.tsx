@@ -4,7 +4,7 @@
  * Rule version history list with status badges.
  */
 import { useState, useRef } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Upload, FileText, CheckCircle, AlertTriangle } from 'lucide-react'
 import { apiClient } from '../../../lib/api'
 import { SeverityBadge } from '../../../components/common/SeverityBadge'
@@ -17,6 +17,7 @@ type DraftRule = GuidelineUploadResult['draft_rules'][number] & {
 }
 
 export function GuidelinesPage() {
+  const qc = useQueryClient()
   const { showToast } = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
   const [result, setResult] = useState<GuidelineUploadResult | null>(null)
@@ -27,7 +28,33 @@ export function GuidelinesPage() {
     onSuccess: (data) => {
       setResult(data)
       setDrafts(data.draft_rules.map((r) => ({ ...r, confirmed: false, edited: false })))
+      qc.invalidateQueries({ queryKey: ['rules'] })
       showToast(`Extracted ${data.draft_rules.length} draft rule(s) from "${data.source_filename}"`, 'success')
+    },
+    onError: (err: Error) => showToast(err.message, 'error'),
+  })
+
+  const activateMutation = useMutation({
+    mutationFn: async (selectedDrafts: DraftRule[]) => {
+      let activated = 0
+      for (const draft of selectedDrafts) {
+        let targetId = draft.id
+        if (draft.edited) {
+          const updated = await apiClient.updateRule(draft.id, {
+            name: draft.name,
+            description: draft.description,
+          })
+          targetId = updated.id
+        }
+        await apiClient.confirmRule(targetId)
+        activated += 1
+      }
+      return activated
+    },
+    onSuccess: (count) => {
+      qc.invalidateQueries({ queryKey: ['rules'] })
+      setDrafts((prev) => prev.filter((d) => !d.confirmed))
+      showToast(`Activated ${count} confirmed rule(s).`, 'success')
     },
     onError: (err: Error) => showToast(err.message, 'error'),
   })
@@ -70,43 +97,43 @@ export function GuidelinesPage() {
       <div
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
-        onClick={() => fileRef.current?.click()}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileRef.current?.click() }}
-        aria-label="Upload guideline file. Accepts PDF, DOCX, or TXT."
-        className="flex flex-col items-center gap-3 p-10 border-2 border-dashed
-                   border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer
+        className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl
                    hover:border-purple-400 dark:hover:border-purple-600
-                   hover:bg-purple-50/30 dark:hover:bg-purple-900/10
-                   transition-colors focus-visible:outline-none focus-visible:ring-2
-                   focus-visible:ring-purple-500"
+                   hover:bg-purple-50/30 dark:hover:bg-purple-900/10 transition-colors"
       >
         <input
           ref={fileRef}
           type="file"
           accept=".pdf,.docx,.txt"
           onChange={handleFileSelect}
-          className="sr-only"
-          aria-hidden="true"
+          className="hidden"
+          aria-label="Choose guideline file"
         />
-        {uploadMutation.isPending ? (
-          <div className="text-center space-y-2">
-            <div className="w-10 h-10 rounded-full border-4 border-purple-500 border-t-transparent
-                            animate-spin mx-auto" role="status" aria-label="Uploading" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">Uploading and extracting rules…</p>
-          </div>
-        ) : (
-          <>
-            <Upload className="w-10 h-10 text-gray-300 dark:text-gray-600" aria-hidden="true" />
-            <div className="text-center">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Drop a guideline here, or click to browse
-              </p>
-              <p className="text-xs text-gray-400 mt-1">PDF, DOCX or TXT — max 20 MB</p>
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="w-full flex flex-col items-center gap-3 p-10 cursor-pointer
+                     focus-visible:outline-none focus-visible:ring-2
+                     focus-visible:ring-purple-500 rounded-xl"
+        >
+          {uploadMutation.isPending ? (
+            <div className="text-center space-y-2">
+              <div className="w-10 h-10 rounded-full border-4 border-purple-500 border-t-transparent
+                              animate-spin mx-auto" role="status" aria-label="Uploading" />
+              <p className="text-sm text-gray-600 dark:text-gray-400">Uploading and extracting rules…</p>
             </div>
-          </>
-        )}
+          ) : (
+            <>
+              <Upload className="w-10 h-10 text-gray-300 dark:text-gray-600" aria-hidden="true" />
+              <div className="text-center">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Drop a guideline here, or click to browse
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">PDF, DOCX or TXT — max 20 MB</p>
+              </div>
+            </>
+          )}
+        </button>
       </div>
 
       {/* Extraction result */}
@@ -119,7 +146,12 @@ export function GuidelinesPage() {
                 {result.source_filename}
               </p>
               <p className="text-xs text-gray-500">
-                {result.total_pages} pages · {result.draft_rules.length} draft rules extracted
+                {result.total_pages != null
+                  ? `${result.total_pages} pages · `
+                  : result.extracted_characters != null
+                    ? `${result.extracted_characters} characters · `
+                    : ''}
+                {result.draft_rules.length} draft rules extracted
               </p>
             </div>
             {confirmedCount > 0 && (
@@ -152,16 +184,14 @@ export function GuidelinesPage() {
 
           {confirmedCount > 0 && (
             <button
-              onClick={() =>
-                showToast(
-                  `${confirmedCount} rule(s) queued for activation. Activate them on the Rules page.`,
-                  'success'
-                )
-              }
+              onClick={() => activateMutation.mutate(drafts.filter((d) => d.confirmed))}
+              disabled={activateMutation.isPending}
               className="w-full px-4 py-3 text-sm font-medium rounded-xl
-                         bg-purple-600 hover:bg-purple-700 text-white transition-colors"
+                         bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40 transition-colors"
             >
-              Activate {confirmedCount} Confirmed Rule{confirmedCount > 1 ? 's' : ''}
+              {activateMutation.isPending
+                ? 'Activating…'
+                : `Activate ${confirmedCount} Confirmed Rule${confirmedCount > 1 ? 's' : ''}`}
             </button>
           )}
         </div>

@@ -28,6 +28,25 @@ export function AssetsPage() {
     onError: (err: Error) => showToast(err.message, 'error'),
   })
 
+  const logoMutation = useMutation({
+    mutationFn: (file: File) => {
+      const baseName = file.name.replace(/\.[^.]+$/, '').trim()
+      const assetName = baseName.length >= 2 ? baseName.slice(0, 120) : 'Brand Logo'
+      return apiClient.uploadLogoAsset(assetName, file)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['assets'] })
+      showToast('Logo uploaded.', 'success')
+    },
+    onError: (err: Error) => showToast(err.message, 'error'),
+  })
+
+  function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) logoMutation.mutate(file)
+    e.target.value = ''
+  }
+
   if (isLoading) {
     return (
       <div className="p-8 space-y-3" role="status" aria-label="Loading assets">
@@ -44,6 +63,7 @@ export function AssetsPage() {
 
   const palette = assets.find((a) => a.asset_type === 'palette')
   const secretTerms = assets.find((a) => a.asset_type === 'secret_terms')
+  const logos = assets.filter((a) => a.asset_type === 'logo')
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-8">
@@ -83,23 +103,57 @@ export function AssetsPage() {
         />
       </section>
 
-      {/* Logo upload placeholder */}
+      {/* Logo upload */}
       <section aria-label="Logo" className="space-y-4">
         <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200">Logo</h2>
-        <div className="flex items-center gap-4 p-4 border-2 border-dashed
-                        border-gray-200 dark:border-gray-700 rounded-xl">
+        <div
+          onDrop={(e) => {
+            e.preventDefault()
+            const file = e.dataTransfer.files[0]
+            if (file) logoMutation.mutate(file)
+          }}
+          onDragOver={(e) => e.preventDefault()}
+          className="flex items-center gap-4 p-4 border-2 border-dashed
+                     border-gray-200 dark:border-gray-700 rounded-xl"
+        >
           <Upload className="w-8 h-8 text-gray-300 dark:text-gray-600" aria-hidden="true" />
           <div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Drag and drop a logo PNG/SVG, or{' '}
+              Drag and drop a logo PNG/JPG/WEBP, or{' '}
               <label className="text-purple-600 dark:text-purple-400 cursor-pointer underline">
                 browse
-                <input type="file" accept="image/*" className="sr-only" aria-label="Upload logo" />
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={handleLogoSelect}
+                  disabled={logoMutation.isPending}
+                  className="sr-only"
+                  aria-label="Upload logo"
+                />
               </label>
             </p>
-            <p className="text-xs text-gray-400 mt-1">PNG or SVG, max 5 MB</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {logoMutation.isPending ? 'Uploading logo…' : 'PNG, JPG, WEBP or GIF, max 10 MB'}
+            </p>
           </div>
         </div>
+        {logos.length > 0 && (
+          <ul className="space-y-2">
+            {logos.map((logo) => (
+              <li
+                key={logo.id}
+                className="flex items-center justify-between text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+              >
+                <span className="font-medium text-gray-800 dark:text-gray-200">{logo.name}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {logo.content_json?.width && logo.content_json?.height
+                    ? `${logo.content_json.width}×${logo.content_json.height}`
+                    : 'Logo registered'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   )
@@ -206,8 +260,7 @@ function SecretTermEditor({
         <button
           onClick={() => setRevealed((r) => !r)}
           aria-label={revealed ? 'Hide secret terms' : 'Reveal secret terms'}
-          className="text-xs flex items-center gap-1 text-gray-500 hover:text-gray-700
-                     dark:hover:text-gray-300 transition-colors"
+          className="text-xs flex items-center gap-1 text-gray-700 dark:text-gray-300 transition-colors"
         >
           {revealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
           {revealed ? 'Hide' : 'Reveal'}

@@ -29,7 +29,7 @@ To seed a hosted deployment without generating broken image links:
 ### Automatic path (recommended)
 
 When `DEMO_LOGIN_ENABLED=true` (backend) and `VITE_DEMO_LOGIN_ENABLED=true` (frontend), the demo workspace is provisioned automatically at startup as an unblocked background task:
-1. Visitors click the **GlowSerum Demo** button on `/login` or `/signup` and instantly land in the pre-filled fictional workspace without needing manual seed runs or passwords.
+1. Visitors click the **Demo** button on `/login` or `/signup` and instantly land in the pre-filled fictional workspace without needing manual seed runs or passwords.
 2. The demo accounts are mapped to `@glowserum.com` addresses (`demo-admin@glowserum.com`, `creator@glowserum.com`, `reviewer@glowserum.com`, `manager@glowserum.com`).
 3. Inside the workspace, users can switch between **Admin**, **Creator**, **Reviewer**, and **Manager** roles using the top-bar role selector.
 4. If `DEMO_RESET_ON_START=true`, only the workspace marked `is_demo` is safely re-initialized on startup.
@@ -47,8 +47,8 @@ To manually seed a repeatable demo workspace with extra roles, conflicting rules
    - Active role accounts for creator, reviewer, manager, and demo admin.
    - Facts including `FACT-DEMO-EXPIRING` (valid for 3 days) and the expired `FACT-OFFER`.
    - Conflicting rules (`DEMO-CONFLICT-A` and `DEMO-CONFLICT-B`) for Guideline Health testing.
-   - Five drafts under "GlowSerum DEMO" exercising wrong numbers, regional language (Marathi), missing disclosures, clean approved content (locked and snapshotted), and fresh findings.
-   - A disputed finding and pending precedent for the Precedent Ledger.
+   - Six drafts (Drafts A through F) under "GlowSerum DEMO" exercising wrong numbers, regional language (Marathi), missing disclosures, clean approved content (locked and snapshotted), fresh findings, and image checks.
+   - A disputed finding and an approved demo precedent (`DEMO-PREC-01`) for the Precedent Ledger.
 
 ## 5–8 user feedback sessions
 These sessions must be run with real participants; they cannot be honestly marked complete by a code-generation task. Obtain consent before recording. Do not use real customer claims or personal data. Suggested participants: 2 creators, 2 reviewers, 1 guideline owner/manager, and 1–3 additional marketers/compliance reviewers.

@@ -457,3 +457,61 @@ def test_vague_rule_wording_creates_a_draft_version_and_old_rule_stays_active_un
     assert confirmed.status_code == 200, confirmed.text
     versions, _ = asyncio.run(rows())
     assert [status for _, status, _ in versions] == ["retired", "active"]
+
+
+def test_suggest_fix_records_changed_claims_for_rewritten_long_claim(
+    api_client, workspace_users, auth_headers, test_database
+):
+    from app.core.job_worker import process_next_job
+
+    _users, content_id, workspace_ids = workspace_users
+    caption = (
+        "Experience India's #1 radiant skin formula! "
+        "Our clinically proven GlowSerum cures acne and lightens dark spots in just 28 days "
+        "with 100% natural organic saffron extracts. Dermatologist tested and guaranteed results."
+    )
+
+    async def set_caption():
+        async with test_database() as db:
+            revision = await db.scalar(
+                select(ContentRevision).where(
+                    ContentRevision.content_id == content_id,
+                    ContentRevision.workspace_id == workspace_ids[1],
+                )
+            )
+            revision.caption = caption
+            await db.commit()
+
+    asyncio.run(set_caption())
+    queued = api_client(
+        "POST",
+        f"/api/content/{content_id}/analyze",
+        headers=auth_headers(1, "creator"),
+    )
+    assert queued.status_code == 202
+    assert asyncio.run(process_next_job(test_database, worker_id="fix-changed-claims-worker"))
+
+    findings = api_client(
+        "GET",
+        f"/api/content/{content_id}/findings",
+        headers=auth_headers(1, "creator"),
+    ).json()
+    acne_finding = next(f for f in findings if "cures acne" in f["claim_text"].lower())
+
+    fix_resp = api_client(
+        "POST",
+        f"/api/findings/{acne_finding['id']}/suggest-fix",
+        headers=auth_headers(1, "creator"),
+    )
+    assert fix_resp.status_code == 200, fix_resp.text
+    fix_data = fix_resp.json()
+    assert fix_data["accepted"] is True
+    assert acne_finding["claim_text"] in fix_data["verification"]["changed_claims"]
+
+    updated = api_client(
+        "GET",
+        f"/api/content/{content_id}/findings",
+        headers=auth_headers(1, "creator"),
+    ).json()
+    saved = next(f for f in updated if f["id"] == acne_finding["id"])
+    assert acne_finding["claim_text"] in saved["intent_preserved"]["claims_changed"]

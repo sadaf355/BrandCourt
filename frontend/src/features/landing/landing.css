@@ -87,15 +87,15 @@
 }
 
 .landing-btn--primary {
-  background-color: var(--accent);
-  color: #f0fdfa;
-  border: 1px solid var(--accent);
+  background-color: var(--btn-primary-bg, #0f766e);
+  color: var(--btn-primary-fg, #ffffff);
+  border: 1px solid var(--btn-primary-bg, #0f766e);
   box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .landing-btn--primary:hover {
-  background-color: var(--accent-strong);
-  border-color: var(--accent-strong);
+  background-color: var(--btn-primary-hover, #115e59);
+  border-color: var(--btn-primary-hover, #115e59);
   transform: translateY(-2px);
   box-shadow: 0 6px 22px color-mix(in srgb, var(--accent) 40%, transparent);
 }
@@ -405,8 +405,8 @@
 }
 
 .phase-step.active {
-  background-color: var(--accent);
-  color: #fff;
+  background-color: var(--btn-primary-bg, #0f766e);
+  color: var(--btn-primary-fg, #ffffff);
 }
 
 .demo-stage-grid {
@@ -498,17 +498,27 @@
 
 .demo-claim-target.flagged-red {
   background-color: rgba(244, 63, 94, 0.16);
-  color: #e11d48;
-  border-bottom: 2px solid #e11d48;
+  color: #9f1239;
+  border-bottom: 2px solid #9f1239;
   font-weight: 700;
 }
 
 .demo-text-fixed {
   padding: 2px 6px;
   border-radius: 4px;
-  color: #059669;
+  color: #047857;
   font-weight: 700;
-  border-bottom: 2px solid #10b981;
+  border-bottom: 2px solid #047857;
+}
+
+:root.dark .demo-claim-target.flagged-red {
+  color: #fda4af;
+  border-bottom-color: #fda4af;
+}
+
+:root.dark .demo-text-fixed {
+  color: #6ee7b7;
+  border-bottom-color: #6ee7b7;
 }
 
 .demo-editor-footer {
@@ -532,10 +542,14 @@
   padding: 3px 8px;
   border-radius: 6px;
   background-color: rgba(16, 185, 129, 0.14);
-  color: #059669;
+  color: #047857;
   border: 1px solid rgba(16, 185, 129, 0.3);
   font-size: 10px;
   font-weight: 700;
+}
+
+:root.dark .intent-chip {
+  color: #6ee7b7;
 }
 
 .demo-connector-column {
@@ -579,14 +593,23 @@
 .finding-status-badge--flagged,
 .finding-status-badge--evidence {
   background: rgba(244, 63, 94, 0.14);
-  color: #e11d48;
+  color: #9f1239;
   border: 1px solid rgba(244, 63, 94, 0.3);
 }
 
 .finding-status-badge--fixed {
   background: rgba(16, 185, 129, 0.14);
-  color: #059669;
+  color: #047857;
   border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+:root.dark .finding-status-badge--flagged,
+:root.dark .finding-status-badge--evidence {
+  color: #fda4af;
+}
+
+:root.dark .finding-status-badge--fixed {
+  color: #6ee7b7;
 }
 
 .finding-severity-tag {
@@ -652,7 +675,7 @@
 }
 
 .diff-del {
-  color: #e11d48;
+  color: #be123c;
   text-decoration: line-through;
 }
 
@@ -661,8 +684,16 @@
 }
 
 .diff-ins {
-  color: #059669;
+  color: #047857;
   font-weight: 700;
+}
+
+:root.dark .diff-del {
+  color: #fda4af;
+}
+
+:root.dark .diff-ins {
+  color: #6ee7b7;
 }
 
 .court-footer-note {

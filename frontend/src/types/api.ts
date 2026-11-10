@@ -145,6 +145,8 @@ export type ReviewJob = {
 export type Rule = {
   id: string
   workspace_id?: string
+  document_id?: string
+  code?: string
   name: string
   description: string
   rule_type: string
@@ -309,7 +311,9 @@ export type GuidelineUploadResult = {
     source_page?: string
     severity: FindingSeverity
   }>
-  total_pages: number
+  total_pages?: number
+  extracted_characters?: number
+  message?: string
 }
 
 
@@ -328,8 +332,8 @@ export type InsightsSummary = {
   overrides_total: number
   disputes_total: number
   expiring_facts_count: number
-  average_approval_hours: number
-  average_review_rounds: number
+  average_approval_hours: number | null
+  average_review_rounds: number | null
   model_mode: string
   is_seeded_reference?: boolean
 }

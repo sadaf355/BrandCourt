@@ -19,7 +19,7 @@ export function LandingNavbar() {
     <header className={`landing-navbar ${scrolled ? 'landing-navbar--scrolled' : ''}`}>
       <div className="landing-container landing-navbar__inner">
         {/* Logo */}
-        <Link to="/" className="brand-lockup" aria-label="BrandCourt Home">
+        <Link to="/" className="brand-lockup">
           <span className="brand-mark">
             <ShieldCheck size={20} strokeWidth={2.1} />
           </span>

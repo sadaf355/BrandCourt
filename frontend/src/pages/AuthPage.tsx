@@ -71,7 +71,7 @@ export function AuthPage({ onSignedIn, initialMode = 'register' }: { onSignedIn:
       className="demo-login-caption"
       style={{
         fontSize: '0.75rem',
-        color: 'var(--fg-muted, #64748b)',
+        color: 'var(--text-muted)',
         marginTop: '0.35rem',
         lineHeight: 1.35,
       }}

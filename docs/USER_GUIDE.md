@@ -20,8 +20,8 @@ Content Creators draft, evaluate, and submit content for compliance verification
 
 ### Understanding Findings & Fix Sandbox
 - Findings are highlighted with severity tags:
-  - **Critical / Major**: Regulatory red flags or unsupported factual claims that block approval.
-  - **Medium / Minor**: Tone or guideline discrepancies.
+  - **Critical / Major**: Regulatory red flags, unsupported factual claims, or tone/guideline issues requiring resolution or override before approval.
+  - **Advisory**: Guidance notes and minor observations that do not block approval.
 - **Fix Sandbox** (`/app/intelligence/fix-verify`):
   - Test candidate copy before resubmitting.
   - Checks if intent and calls-to-action (CTAs) are preserved while eliminating blockers.
@@ -80,7 +80,7 @@ Admins manage organization-wide guidelines, brand facts, AI models, and complian
 
 ### Model Settings & Privacy Controls
 1. Navigate to **Model Settings** (`/app/settings/models`) (Admin only).
-2. **Local Model Toggle**: Switch execution between local-only air-gapped inference and cloud endpoints.
+2. **Local Model Toggle**: Switch workspace execution between deterministic checks and local Ollama inference (`MODEL_MODE`).
 3. **Data-Flow Audit Log**: Inspect character lengths, purposes, and privacy masking verification for every AI model call.
 
 ---

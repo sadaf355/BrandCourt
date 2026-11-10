@@ -95,7 +95,7 @@ export function PrecedentLedgerPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
             <Scale className="text-indigo-400" size={26} />
             Precedent Ledger
           </h1>
@@ -119,7 +119,9 @@ export function PrecedentLedgerPage() {
             key={tab}
             onClick={() => setFilter(tab)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              filter === tab ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'text-slate-400 hover:text-white'
+              filter === tab
+                ? 'bg-indigo-600 text-white border border-indigo-500/30'
+                : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)} ({precedents.filter((p) => (tab === 'all' ? true : p.status === tab)).length})

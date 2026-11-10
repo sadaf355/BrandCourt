@@ -37,7 +37,7 @@ export function FixVerificationView() {
     <div className="page-container p-6 space-y-6" data-testid="fix-verification-view">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
           <Sparkles className="text-indigo-400" size={26} />
           Fix Verification & Intent Sandbox
         </h1>
@@ -50,7 +50,7 @@ export function FixVerificationView() {
       <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 flex items-start gap-3 text-xs text-indigo-300">
         <Info size={16} className="text-indigo-400 mt-0.5 shrink-0" />
         <div>
-          <span className="font-semibold text-white">Full Engine Rollback Evaluation:</span> Testing a fix spins up a temporary
+          <span className="font-semibold text-gray-900 dark:text-white">Full Engine Rollback Evaluation:</span> Testing a fix spins up a temporary
           candidate revision in the Claim Court engine, evaluates all 3 intelligence layers (Rules, Claims, Tone), and
           rolls it back cleanly without mutating production revision history.
         </div>
@@ -59,25 +59,27 @@ export function FixVerificationView() {
       {/* Input Form */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/60 space-y-4">
-          <h2 className="text-sm font-semibold text-white">Candidate Proposed Copy</h2>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Candidate Proposed Copy</h2>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Target Content Item ID</label>
+            <label htmlFor="fix-content-id" className="block text-xs font-medium text-slate-400 mb-1">Target Content Item ID</label>
             <input
+              id="fix-content-id"
               type="text"
               value={contentId}
               onChange={(e) => setContentId(e.target.value)}
-              className="w-full text-xs bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white"
+              className="w-full text-xs bg-white dark:bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-gray-900 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Proposed Caption Text</label>
+            <label htmlFor="fix-candidate-text" className="block text-xs font-medium text-slate-400 mb-1">Proposed Caption Text</label>
             <textarea
+              id="fix-candidate-text"
               value={candidateText}
               onChange={(e) => setCandidateText(e.target.value)}
               rows={6}
-              className="w-full text-xs bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full text-xs bg-white dark:bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
 
@@ -101,11 +103,11 @@ export function FixVerificationView() {
 
         {/* Results Panel */}
         <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/60 space-y-4">
-          <h2 className="text-sm font-semibold text-white">Verification Engine Verdict</h2>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Verification Engine Verdict</h2>
 
           {!verificationResult ? (
-            <div className="h-64 flex flex-col items-center justify-center text-center p-6 text-slate-500 border border-dashed border-slate-800 rounded-lg">
-              <HelpCircle size={32} className="mb-2 text-slate-600" />
+            <div className="h-64 flex flex-col items-center justify-center text-center p-6 text-slate-400 border border-dashed border-slate-800 rounded-lg">
+              <HelpCircle size={32} className="mb-2 text-slate-400" />
               <p className="text-xs">Enter candidate copy and click "Verify Candidate Copy" to run full engine analysis.</p>
             </div>
           ) : (
