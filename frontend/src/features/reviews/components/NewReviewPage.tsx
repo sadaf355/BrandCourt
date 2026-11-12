@@ -33,6 +33,8 @@ export function NewReviewPage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [creativePreview, setCreativePreview] = useState<string | null>(null)
+  const [creativeFile, setCreativeFile] = useState<File | null>(null)
+  const [submitError, setSubmitError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const {
@@ -61,18 +63,24 @@ export function NewReviewPage() {
   const detectedLanguage = isHindiScript ? 'Hindi/Marathi (Devanagari script)' : 'English or other Latin-script text'
 
   const handleCreativeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0] || null
+    setCreativeFile(file)
+    setSubmitError('')
     if (file) {
       const reader = new FileReader()
       reader.onloadend = () => {
         setCreativePreview(reader.result as string)
       }
       reader.readAsDataURL(file)
+    } else {
+      setCreativePreview(null)
     }
   }
 
   const onSubmit = async (data: ReviewFormData) => {
+    if (submitting) return
     setSubmitting(true)
+    setSubmitError('')
     try {
       const created = await apiClient.createContent({
         title: data.title,
@@ -84,10 +92,23 @@ export function NewReviewPage() {
         paid_gifted: data.is_paid_gifted,
       })
 
+      if (creativeFile) {
+        try {
+          await apiClient.uploadCreative(created.id, creativeFile)
+        } catch (uploadErr: any) {
+          const msg = uploadErr?.message || 'Creative image upload failed.'
+          setSubmitError(`Draft created, but creative upload failed: ${msg}`)
+          showToast(msg, 'error')
+          return
+        }
+      }
+
       showToast('Review created successfully! Redirecting to Claim Court workbench...', 'success')
       navigate(`/app/reviews/${created.id}`)
     } catch (err: any) {
-      showToast(err.message || 'Failed to create review', 'error')
+      const msg = err?.message || 'Failed to create review'
+      setSubmitError(msg)
+      showToast(msg, 'error')
     } finally {
       setSubmitting(false)
     }
@@ -123,6 +144,12 @@ export function NewReviewPage() {
       {isHindiScript && <div role="status" aria-live="polite" className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
         <strong>Limited language support:</strong> Devanagari content may include Hindi or Marathi. Automated language and claim checks have limited coverage for Marathi and mixed-language phrasing. Please have a fluent reviewer verify nuance, idioms and claim meaning before approval.
       </div>}
+
+      {submitError && (
+        <div role="alert" className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+          {submitError}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <div

@@ -87,6 +87,16 @@ export default function App() {
     navigate('/')
   }
 
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setToken(null)
+      setUser(null)
+      navigate('/login', { replace: true })
+    }
+    window.addEventListener('brandcourt-unauthorized', onUnauthorized)
+    return () => window.removeEventListener('brandcourt-unauthorized', onUnauthorized)
+  }, [navigate])
+
   if (checking) {
     return (
       <div className="app-loading" style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
@@ -105,6 +115,7 @@ export default function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<AuthPage onSignedIn={setUser} initialMode="login" />} />
               <Route path="/signup" element={<AuthPage onSignedIn={setUser} initialMode="register" />} />
+              <Route path="/app/*" element={<Navigate to="/login" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           ) : (

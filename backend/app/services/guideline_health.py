@@ -34,15 +34,25 @@ def overlapping_channel_scope(left: Any, right: Any) -> bool:
     return not left_channels or not right_channels or bool(left_channels & right_channels)
 
 
-def rule_pair_candidates(rules: list[Any], similarity_threshold: float = 0.55):
+DEFAULT_CONFLICT_SIMILARITY_THRESHOLD = 0.5
+MAX_CONFLICT_CANDIDATES = 20
+
+
+def rule_pair_candidates(
+    rules: list[Any],
+    similarity_threshold: float = DEFAULT_CONFLICT_SIMILARITY_THRESHOLD,
+    max_candidates: int = MAX_CONFLICT_CANDIDATES,
+):
     candidates = []
     for index, left in enumerate(rules):
         left_vector = rule_vector(left)
         for right in rules[index + 1 :]:
+            scope_overlap = overlapping_channel_scope(left, right)
+            if not scope_overlap:
+                continue
             right_vector = rule_vector(right)
             similarity = cosine(left_vector, right_vector)
-            scope_overlap = overlapping_channel_scope(left, right)
-            if similarity < similarity_threshold and not scope_overlap:
+            if similarity < similarity_threshold:
                 continue
             candidates.append(
                 {
@@ -52,7 +62,8 @@ def rule_pair_candidates(rules: list[Any], similarity_threshold: float = 0.55):
                     "scope_overlap": scope_overlap,
                 }
             )
-    return candidates
+    candidates.sort(key=lambda item: item["similarity"], reverse=True)
+    return candidates[:max_candidates]
 
 
 def vague_rule_issue(rule: Any, examples: Iterable[Any]) -> dict[str, Any] | None:

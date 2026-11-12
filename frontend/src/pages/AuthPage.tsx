@@ -47,6 +47,17 @@ export function AuthPage({ onSignedIn, initialMode = 'register' }: { onSignedIn:
 </button>
 {demoLoginEnabled && (
   <div className="demo-login-box" style={{ marginTop: '0.85rem', textAlign: 'center' }}>
+    <p
+      className="demo-login-caption"
+      style={{
+        fontSize: '0.78rem',
+        fontWeight: 600,
+        color: 'var(--text-muted)',
+        margin: '0 0 0.4rem 0',
+      }}
+    >
+      No account needed: press Demo to explore
+    </p>
     <button
       type="button"
       className="secondary-button demo-login-button"

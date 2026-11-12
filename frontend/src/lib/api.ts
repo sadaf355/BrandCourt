@@ -72,7 +72,17 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   if (response.status === 204) return undefined as T
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
-    throw new Error(typeof data.detail === 'string' ? data.detail : `Request failed (${response.status})`)
+    const message =
+      typeof data?.detail === 'string'
+        ? data.detail
+        : typeof data?.detail?.message === 'string'
+          ? data.detail.message
+          : Array.isArray(data?.detail) && typeof data.detail[0]?.msg === 'string'
+            ? data.detail[0].msg
+            : response.status === 429
+              ? 'Too many requests. Please wait a moment and try again.'
+              : `Request failed (${response.status})`
+    throw new Error(message)
   }
   return data as T
 }
@@ -190,6 +200,28 @@ export const apiClient = {
     return api<ContentRevision>(`/content/${contentId}/revisions`, {
       method: 'POST',
       body: JSON.stringify(data),
+    })
+  },
+  async uploadCreative(contentId: string, file: File): Promise<ContentRevision> {
+    if (USE_MOCK) {
+      return {
+        id: `rev-${Date.now()}`,
+        content_id: contentId,
+        version: 1,
+        caption: '',
+        creative_filename: file.name,
+        ocr_status: 'not_run',
+        is_ai_media: false,
+        detected_language: 'en',
+        created_by: 'mock-user',
+        created_at: new Date().toISOString(),
+      }
+    }
+    const form = new FormData()
+    form.append('file', file)
+    return api<ContentRevision>(`/content/${contentId}/creative`, {
+      method: 'POST',
+      body: form,
     })
   },
   async startAnalysisJob(contentId: string): Promise<{ job_id: string; status: string; progress: number; stage: string; content_id: string; revision_id: string; poll_url: string }> {

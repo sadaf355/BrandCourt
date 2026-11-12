@@ -37,11 +37,11 @@ export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, o
   const location = useLocation()
   const roleName = user.role === 'admin' ? 'Guideline owner' : user.role.charAt(0).toUpperCase() + user.role.slice(1)
 
-  const DEMO_ROLES: { role: Role; label: string }[] = [
-    { role: 'admin', label: 'Admin' },
-    { role: 'creator', label: 'Creator' },
-    { role: 'reviewer', label: 'Reviewer' },
-    { role: 'manager', label: 'Manager' },
+  const DEMO_ROLES: { role: Role; label: string; summary: string }[] = [
+    { role: 'admin', label: 'Admin', summary: 'Rules, facts, models & approvals' },
+    { role: 'creator', label: 'Creator', summary: 'Draft content, run checks & edit' },
+    { role: 'reviewer', label: 'Reviewer', summary: 'Inspect queue, verify & override' },
+    { role: 'manager', label: 'Manager', summary: 'Approve, lock & export reports' },
   ]
 
   const isDemoUser = Boolean(
@@ -274,7 +274,7 @@ export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, o
                 >
                   Demo:
                 </span>
-                {DEMO_ROLES.map(({ role, label }) => {
+                {DEMO_ROLES.map(({ role, label, summary }) => {
                   const isCurrent = user.role === role
                   return (
                     <button
@@ -288,12 +288,13 @@ export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, o
                         fontWeight: isCurrent ? 700 : 500,
                         borderRadius: '0.25rem',
                         border: 'none',
-                        background: isCurrent ? 'var(--accent, #6366f1)' : 'transparent',
-                        color: isCurrent ? '#ffffff' : 'var(--fg, #0f172a)',
+                        background: isCurrent ? 'var(--btn-primary-bg, #0f766e)' : 'transparent',
+                        color: isCurrent ? '#ffffff' : 'var(--text, #0f172a)',
                         cursor: switchingRole ? 'not-allowed' : 'pointer',
                         transition: 'background 0.15s ease',
                       }}
-                      title={`Demo: switch to ${label}`}
+                      title={`${label}: ${summary}`}
+                      aria-label={`Switch to ${label} (${summary})`}
                     >
                       {label}
                     </button>

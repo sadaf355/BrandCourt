@@ -66,6 +66,9 @@ export function GuidelineHealthPage() {
   const issues = (healthReport?.issues || []).filter(
     (issue) => !issue.issue_key || !ignoredKeys.includes(issue.issue_key)
   )
+  const conflictCount = issues.filter((i) => i.type === 'possible_conflict').length
+  const vagueCount = issues.filter((i) => i.type === 'vague_rule').length
+  const overrideCount = issues.filter((i) => i.type === 'override_rate').length
 
   const handleAcceptSuggestion = (issue: GuidelineHealthIssue) => {
     if (issue.issue_key) decisionMutation.mutate({ issue_key: issue.issue_key, rule_id: issue.rule_id, issue_type: issue.type, action: 'accept', edited_wording: issue.suggestion })
@@ -102,9 +105,16 @@ export function GuidelineHealthPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">
           <Info size={14} className="text-indigo-400" />
-          <span>Screening {healthReport?.active_rules ?? 0} active rules</span>
+          <span>
+            {healthReport?.active_rules ?? 0} active rules · {issues.length} issue{issues.length === 1 ? '' : 's'} shown ({conflictCount} conflict{conflictCount === 1 ? '' : 's'}, {vagueCount} vague{overrideCount ? `, ${overrideCount} override rate` : ''})
+          </span>
+          {healthReport?.model_mode && (
+            <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+              {healthReport.model_mode}
+            </span>
+          )}
         </div>
       </div>
 
@@ -165,7 +175,13 @@ export function GuidelineHealthPage() {
 
                 <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1.5">{issue.title}</h3>
                 <p className="text-xs text-slate-300 leading-relaxed mb-4">{issue.explanation}</p>
-                {issue.analysis_status && <p className="text-[11px] text-slate-400 mb-2">Analysis: {issue.analysis_status}</p>}
+                {issue.analysis_status && (
+                  <p className="text-[11px] text-amber-400 font-medium mb-2">
+                    {issue.analysis_status === 'candidate_only'
+                      ? 'Possible conflict, needs human review'
+                      : `Analysis status: ${issue.analysis_status.replace(/_/g, ' ')}`}
+                  </p>
+                )}
 
                 {/* Suggested Wording Box */}
                 <div className="p-3.5 rounded-lg border border-slate-700/80 bg-slate-800/60 mb-4">

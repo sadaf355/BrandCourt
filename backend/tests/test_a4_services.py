@@ -304,3 +304,88 @@ def test_worker_loop_periodic_fact_expiry_runs_daily(test_database, workspace_us
     )
     assert ran_again_at == t0 + timedelta(hours=24)
     assert asyncio.run(fetch_status("WORKER-EXPIRED-2")) == "expired"
+
+
+def test_rule_pair_candidates_threshold_overlap_and_top_20_cap():
+    from app.services.guideline_health import (
+        DEFAULT_CONFLICT_SIMILARITY_THRESHOLD,
+        MAX_CONFLICT_CANDIDATES,
+    )
+
+    assert DEFAULT_CONFLICT_SIMILARITY_THRESHOLD == 0.5
+    assert MAX_CONFLICT_CANDIDATES == 20
+
+    # Overlapping channel but low similarity -> rejected
+    low_a = SimpleNamespace(id="1", code="L1", title="Hydration claims", text="State 4 weeks hydration study.", channels=["instagram"], embedding=None)
+    low_b = SimpleNamespace(id="2", code="L2", title="Packaging disposal", text="Recycle plastic cap carefully.", channels=["instagram"], embedding=None)
+    assert rule_pair_candidates([low_a, low_b]) == []
+
+    # High similarity but disjoint channels -> rejected
+    disjoint_a = SimpleNamespace(id="3", code="D1", title="Always show price", text="Every headline must display price.", channels=["paid_ad"], embedding=None)
+    disjoint_b = SimpleNamespace(id="4", code="D2", title="Always show price", text="Every headline must display price.", channels=["packaging"], embedding=None)
+    assert rule_pair_candidates([disjoint_a, disjoint_b]) == []
+
+    # 8 identical rules produce 28 pairs > 20 -> capped at top 20 ranked descending
+    identical_rules = [
+        SimpleNamespace(
+            id=f"r-{i}",
+            code=f"R-{i}",
+            title="Never use exclamation marks",
+            text="Headlines must not use exclamation marks.",
+            channels=["instagram"],
+            embedding=None,
+        )
+        for i in range(8)
+    ]
+    capped = rule_pair_candidates(identical_rules)
+    assert len(capped) == 20
+    assert all(c["similarity"] >= DEFAULT_CONFLICT_SIMILARITY_THRESHOLD for c in capped)
+
+
+def test_seeded_demo_rules_find_all_8_planted_conflicts_and_no_false_vague(
+    test_database, tmp_path
+):
+    from app.core.storage import LocalStorage
+    from app.models.entities import RuleExample
+    from app.services.demo_workspace import ensure_demo_workspace
+
+    storage = LocalStorage(tmp_path / "uploads")
+    res = asyncio.run(
+        ensure_demo_workspace(
+            sessions=test_database,
+            storage=storage,
+            upload_dir=tmp_path / "uploads",
+            skip_creatives=True,
+        )
+    )
+    ws_id = res["workspace_id"]
+
+    async def inspect():
+        async with test_database() as db:
+            rules = (
+                await db.scalars(
+                    select(Rule).where(Rule.workspace_id == ws_id, Rule.status == "active")
+                )
+            ).all()
+            vague_codes = []
+            for r in rules:
+                examples = (
+                    await db.scalars(select(RuleExample).where(RuleExample.rule_id == r.id))
+                ).all()
+                if vague_rule_issue(r, examples):
+                    vague_codes.append(r.code)
+            pairs = rule_pair_candidates(rules)
+            return vague_codes, {f"{p['rule'].code} / {p['other_rule'].code}" for p in pairs}
+
+    vague_codes, pair_codes = asyncio.run(inspect())
+    for code in ("IN-1", "IN-2", "IN-3", "IN-4", "IN-5", "IN-6"):
+        assert code not in vague_codes
+    for suffix in ("A", "B", "C", "D", "E", "F", "G", "H"):
+        assert f"DEMO-CONFLICT-{suffix}" not in vague_codes
+    assert set(vague_codes) == {"DEMO-VAGUE-1", "DEMO-VAGUE-2", "DEMO-VAGUE-3", "DEMO-VAGUE-4"}
+    assert {
+        "DEMO-CONFLICT-A / DEMO-CONFLICT-B",
+        "DEMO-CONFLICT-C / DEMO-CONFLICT-D",
+        "DEMO-CONFLICT-E / DEMO-CONFLICT-F",
+        "DEMO-CONFLICT-G / DEMO-CONFLICT-H",
+    } <= pair_codes

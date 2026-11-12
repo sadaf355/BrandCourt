@@ -31,6 +31,9 @@ export function ReviewDetailPage({ user }: { user: User }) {
   const [error, setError] = useState<string | null>(null)
 
   const [activeJob, setActiveJob] = useState<ReviewJob | null>(null)
+  const [startingAnalysis, setStartingAnalysis] = useState(false)
+  const [submittingWorkflow, setSubmittingWorkflow] = useState(false)
+  const [decidingFindingId, setDecidingFindingId] = useState<string | null>(null)
   const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'content' | 'findings' | 'evidence'>('findings')
 
@@ -64,6 +67,30 @@ export function ReviewDetailPage({ user }: { user: User }) {
     loadContent()
   }, [loadContent])
 
+  // Recover an in-flight review job across page refreshes
+  useEffect(() => {
+    if (!id) return
+    try {
+      const savedJobId = sessionStorage.getItem(`brandcourt:active-job:${id}`)
+      if (!savedJobId) return
+      apiClient
+        .getJob(savedJobId)
+        .then((job) => {
+          if (job.status === 'completed' || job.status === 'failed') {
+            sessionStorage.removeItem(`brandcourt:active-job:${id}`)
+            loadContent()
+          } else {
+            setActiveJob(job)
+          }
+        })
+        .catch(() => {
+          sessionStorage.removeItem(`brandcourt:active-job:${id}`)
+        })
+    } catch {
+      // sessionStorage may be unavailable
+    }
+  }, [id, loadContent])
+
   // Polling for review job progress if active
   useEffect(() => {
     if (!activeJob || activeJob.status === 'completed' || activeJob.status === 'failed') return
@@ -72,9 +99,11 @@ export function ReviewDetailPage({ user }: { user: User }) {
         const job = await apiClient.getJob(activeJob.id)
         setActiveJob(job)
         if (job.status === 'completed') {
+          try { if (id) sessionStorage.removeItem(`brandcourt:active-job:${id}`) } catch { /* ignore */ }
           showToast('Claim Court check complete!', 'success')
           loadContent()
         } else if (job.status === 'failed') {
+          try { if (id) sessionStorage.removeItem(`brandcourt:active-job:${id}`) } catch { /* ignore */ }
           showToast('Check stage flagged for human review.', 'warning')
           loadContent()
         }
@@ -83,12 +112,14 @@ export function ReviewDetailPage({ user }: { user: User }) {
       }
     }, 600)
     return () => clearInterval(interval)
-  }, [activeJob, loadContent, showToast])
+  }, [activeJob, id, loadContent, showToast])
 
   const handleStartAnalysis = async () => {
-    if (!id) return
+    if (!id || startingAnalysis || activeJob?.status === 'queued' || activeJob?.status === 'running') return
+    setStartingAnalysis(true)
     try {
       const res = await apiClient.startAnalysisJob(id)
+      try { sessionStorage.setItem(`brandcourt:active-job:${id}`, res.job_id) } catch { /* ignore */ }
       setActiveJob({
         id: res.job_id,
         job_type: 'claim_court_review',
@@ -99,6 +130,8 @@ export function ReviewDetailPage({ user }: { user: User }) {
       showToast('Analysis job queued. Running deterministic checks & Claim Court...', 'info')
     } catch (err: any) {
       showToast(err.message || 'Failed to start analysis job', 'error')
+    } finally {
+      setStartingAnalysis(false)
     }
   }
 
@@ -107,18 +140,22 @@ export function ReviewDetailPage({ user }: { user: User }) {
     action: 'accept' | 'dispute' | 'override' | 'resolve',
     note?: string
   ) => {
-    if (!id) return
+    if (!id || decidingFindingId) return
+    setDecidingFindingId(findingId)
     try {
       await apiClient.submitFindingDecision(id, findingId, action, note)
       showToast(`Finding marked as ${action}ed`, 'success')
       loadContent()
     } catch (err: any) {
       showToast(err.message || 'Failed to submit decision', 'error')
+    } finally {
+      setDecidingFindingId(null)
     }
   }
 
   const handleSaveRevision = async () => {
-    if (!id || !editedCaption.trim()) return
+    if (!id || !editedCaption.trim() || submittingWorkflow) return
+    setSubmittingWorkflow(true)
     try {
       await apiClient.createRevision(id, { caption: editedCaption.trim() })
       setIsEditing(false)
@@ -127,39 +164,64 @@ export function ReviewDetailPage({ user }: { user: User }) {
       handleStartAnalysis()
     } catch (err: any) {
       showToast(err.message || 'Failed to create revision', 'error')
+    } finally {
+      setSubmittingWorkflow(false)
     }
   }
 
   const handleSubmitForReview = async () => {
-    if (!id) return
+    if (!id || submittingWorkflow) return
+    setSubmittingWorkflow(true)
     try {
       await apiClient.submitForReview(id)
       showToast('Content successfully submitted for reviewer queue sign-off!', 'success')
       loadContent()
     } catch (err: any) {
       showToast(err.message || 'Failed to submit for review', 'error')
+    } finally {
+      setSubmittingWorkflow(false)
+    }
+  }
+
+  const handleStartReview = async () => {
+    if (!id || submittingWorkflow) return
+    setSubmittingWorkflow(true)
+    try {
+      await apiClient.startReview(id)
+      showToast('Content moved to In Review. Ready for reviewer or manager decision.', 'success')
+      loadContent()
+    } catch (err: any) {
+      showToast(err.message || 'Could not start review', 'error')
+    } finally {
+      setSubmittingWorkflow(false)
     }
   }
 
   const handleApprove = async () => {
-    if (!id) return
+    if (!id || submittingWorkflow) return
+    setSubmittingWorkflow(true)
     try {
       await apiClient.approveContent(id)
       showToast('Content approved for publication! Immutable snapshot saved.', 'success')
       loadContent()
     } catch (err: any) {
       showToast(err.message || 'Cannot approve content', 'error')
+    } finally {
+      setSubmittingWorkflow(false)
     }
   }
 
   const handleReject = async () => {
-    if (!id) return
+    if (!id || submittingWorkflow) return
+    setSubmittingWorkflow(true)
     try {
       await apiClient.rejectContent(id)
       showToast('Content rejected. Returned with feedback.', 'warning')
       loadContent()
     } catch (err: any) {
       showToast(err.message || 'Failed to reject content', 'error')
+    } finally {
+      setSubmittingWorkflow(false)
     }
   }
 
@@ -178,8 +240,17 @@ export function ReviewDetailPage({ user }: { user: User }) {
 
   if (error || !content) {
     return (
-      <div style={{ padding: '2rem', maxWidth: '600px', margin: '0 auto' }}>
-        <ErrorState message={error || 'Review not found'} onRetry={loadContent} />
+      <div style={{ padding: '2rem', maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <ErrorState
+          title="Could not open content review"
+          message={error || 'This review was not found or belongs to another workspace.'}
+          onRetry={loadContent}
+        />
+        <div style={{ textAlign: 'center' }}>
+          <button type="button" className="secondary-button" onClick={() => navigate('/app/reviews')}>
+            Back to Content Reviews
+          </button>
+        </div>
       </div>
     )
   }
@@ -267,7 +338,7 @@ export function ReviewDetailPage({ user }: { user: User }) {
           <button
             type="button"
             onClick={handleStartAnalysis}
-            disabled={activeJob?.status === 'running'}
+            disabled={startingAnalysis || activeJob?.status === 'queued' || activeJob?.status === 'running' || content.status === 'approved'}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -279,18 +350,19 @@ export function ReviewDetailPage({ user }: { user: User }) {
               fontSize: '0.8rem',
               fontWeight: 600,
               border: 'none',
-              cursor: activeJob?.status === 'running' ? 'not-allowed' : 'pointer',
+              cursor: startingAnalysis || activeJob?.status === 'queued' || activeJob?.status === 'running' || content.status === 'approved' ? 'not-allowed' : 'pointer',
+              opacity: startingAnalysis || activeJob?.status === 'queued' || activeJob?.status === 'running' || content.status === 'approved' ? 0.55 : 1,
             }}
           >
-            <Sparkles size={14} /> Run Claim Court Check
+            <Sparkles size={14} /> {startingAnalysis || activeJob?.status === 'running' || activeJob?.status === 'queued' ? 'Checking…' : 'Run Claim Court Check'}
           </button>
 
-          {/* Submit for review button (creator role) */}
-          {(user.role === 'creator' || user.role === 'admin') && content.status !== 'approved' && (
+          {/* Submit for review button (creator/manager/admin role) */}
+          {(user.role === 'creator' || user.role === 'manager' || user.role === 'admin') && (content.status === 'draft' || content.status === 'analyzed' || content.status === 'rejected') && (
             <button
               type="button"
               onClick={handleSubmitForReview}
-              disabled={blockerFindings.length > 0 || content.status === 'submitted' || content.status === 'in_review'}
+              disabled={submittingWorkflow || blockerFindings.length > 0}
               title={
                 blockerFindings.length > 0
                   ? `Cannot submit: ${blockerFindings.length} blocking finding(s) require action.`
@@ -307,10 +379,58 @@ export function ReviewDetailPage({ user }: { user: User }) {
                 fontSize: '0.8rem',
                 fontWeight: 600,
                 border: 'none',
-                cursor: blockerFindings.length > 0 ? 'not-allowed' : 'pointer',
+                cursor: submittingWorkflow || blockerFindings.length > 0 ? 'not-allowed' : 'pointer',
+                opacity: submittingWorkflow ? 0.6 : 1,
               }}
             >
               <Send size={14} /> Submit for Review
+            </button>
+          )}
+
+          {/* Start review button (reviewer/manager/admin when submitted) */}
+          {(user.role === 'reviewer' || user.role === 'manager' || user.role === 'admin') && content.status === 'submitted' && (
+            <button
+              type="button"
+              onClick={handleStartReview}
+              disabled={submittingWorkflow}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.45rem 1rem',
+                borderRadius: '6px',
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                border: 'none',
+                cursor: submittingWorkflow ? 'not-allowed' : 'pointer',
+                opacity: submittingWorkflow ? 0.6 : 1,
+              }}
+            >
+              Start Reviewer Sign-Off
+            </button>
+          )}
+
+          {content.status === 'approved' && (
+            <button
+              type="button"
+              onClick={() => navigate('/app/insights')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.45rem 1rem',
+                borderRadius: '6px',
+                backgroundColor: '#047857',
+                color: '#ffffff',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Open Compliance Report
             </button>
           )}
         </div>
@@ -620,11 +740,15 @@ export function ReviewDetailPage({ user }: { user: User }) {
                   onDispute={(note) => handleDecision(f.id, 'dispute', note)}
                   onEdit={(fix) => {
                     const original = latestRevision?.caption || ''
-                    const updated = original.replace(f.claim_text, fix)
+                    const updated =
+                      fix.length >= original.length * 0.6 || !original.includes(f.claim_text)
+                        ? fix
+                        : original.replace(f.claim_text, fix)
                     setEditedCaption(updated)
                     setIsEditing(true)
                   }}
                   canDecide={content.status !== 'approved'}
+                  actionBusy={decidingFindingId === f.id}
                 />
               ))}
             </div>
@@ -710,6 +834,7 @@ export function ReviewDetailPage({ user }: { user: User }) {
         userRole={user.role}
         onApprove={handleApprove}
         onReject={handleReject}
+        disabled={submittingWorkflow || content.status === 'approved' || content.status === 'rejected'}
       />
     </div>
   )

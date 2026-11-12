@@ -22,6 +22,7 @@ interface FindingCardProps {
   onEdit?: (suggestedText: string) => void
   onDispute?: (note: string) => void
   canDecide?: boolean
+  actionBusy?: boolean
 }
 
 export function FindingCard({
@@ -32,6 +33,7 @@ export function FindingCard({
   onEdit,
   onDispute,
   canDecide = true,
+  actionBusy = false,
 }: FindingCardProps) {
   const [showHistory, setShowHistory] = useState(false)
   const [disputeOpen, setDisputeOpen] = useState(false)
@@ -173,6 +175,16 @@ export function FindingCard({
       {fixResult && <div className="mb-3 p-3 rounded-lg border border-slate-700 bg-slate-800/70 text-xs" onClick={(e) => e.stopPropagation()}>
         <strong className={fixResult.accepted ? 'text-emerald-400' : 'text-amber-400'}>{fixResult.accepted ? 'Fix verified — safe to suggest' : 'Fix not approved'}</strong>
         {fixResult.suggested_fix && <p className="mt-2 text-slate-200">{fixResult.suggested_fix}</p>}
+        {fixResult.accepted && fixResult.suggested_fix && onEdit && (
+          <button
+            type="button"
+            disabled={actionBusy}
+            onClick={() => onEdit(fixResult.suggested_fix)}
+            className="mt-2 px-3 py-1 rounded text-xs font-semibold bg-emerald-600 text-white disabled:opacity-50"
+          >
+            Apply suggested fix to draft
+          </button>
+        )}
         {fixResult.rejection_reason && <p className="mt-1 text-slate-400">{fixResult.rejection_reason}</p>}
         {fixResult.verification && <div className="mt-2 space-y-1 text-slate-400">
           <p>Intent preserved: <b>{fixResult.verification.intent_preserved ? 'Yes' : 'No'}</b> · Similarity: <b>{fixResult.verification.embedding_similarity ?? fixResult.verification.similarity ?? 'Not available'}</b></p>
@@ -291,7 +303,7 @@ export function FindingCard({
             <button
               type="button"
               onClick={onAccept}
-              disabled={finding.state === 'accepted'}
+              disabled={actionBusy || finding.state === 'accepted'}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -303,17 +315,19 @@ export function FindingCard({
                 backgroundColor:
                   finding.state === 'accepted' ? 'rgba(34, 197, 94, 0.2)' : 'var(--color-bg-subtle, rgba(255, 255, 255, 0.08))',
                 border: '1px solid var(--color-border, rgba(148, 163, 184, 0.25))',
-                color: finding.state === 'accepted' ? '#22c55e' : 'var(--color-text-primary, #ffffff)',
-                cursor: finding.state === 'accepted' ? 'default' : 'pointer',
+                color: finding.state === 'accepted' ? '#047857' : 'var(--color-text-primary, #ffffff)',
+                cursor: actionBusy || finding.state === 'accepted' ? 'default' : 'pointer',
+                opacity: actionBusy ? 0.6 : 1,
               }}
             >
-              <Check size={14} /> Accept finding
+              <Check size={14} /> {finding.state === 'accepted' ? 'Accepted ✓' : 'Accept finding'}
             </button>
           )}
 
           {onDispute && (
             <button
               type="button"
+              disabled={actionBusy}
               onClick={() => setDisputeOpen((prev) => !prev)}
               style={{
                 display: 'inline-flex',

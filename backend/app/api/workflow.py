@@ -161,6 +161,7 @@ async def change_workflow(content_id: str, body: StateInput, user: CurrentUser, 
         item.status='in_review'
     elif action=='approve':
         require_role(user,MANAGER_ROLES)
+        if item.status=='approved': raise HTTPException(409,'This content is already approved and locked.')
         if item.status!='in_review': raise HTTPException(409,'Content must be in review before approval.')
         revision=await db.scalar(select(ContentRevision).where(ContentRevision.content_id==item.id,ContentRevision.workspace_id==user.workspace_id,ContentRevision.version==item.current_revision))
         findings=(await db.scalars(select(ClaimFinding).where(ClaimFinding.content_id==item.id,ClaimFinding.workspace_id==user.workspace_id,ClaimFinding.revision_id==revision.id))).all() if revision else []

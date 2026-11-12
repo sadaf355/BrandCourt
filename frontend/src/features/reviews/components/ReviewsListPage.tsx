@@ -5,7 +5,7 @@ import { ContentItem } from '../../../types/api'
 import { apiClient } from '../../../lib/api'
 import { DataTable, Column } from '../../../components/common/DataTable'
 import { StatusBadge } from '../../../components/common/StatusBadge'
-import { Skeleton, ErrorState } from '../../../components/common/FeedbackStates'
+import { Skeleton, ErrorState, EmptyState } from '../../../components/common/FeedbackStates'
 
 export function ReviewsListPage() {
   const navigate = useNavigate()
@@ -126,6 +126,13 @@ export function ReviewsListPage() {
         </div>
       ) : error ? (
         <ErrorState message={error} onRetry={loadData} />
+      ) : items.length === 0 ? (
+        <EmptyState
+          title="No reviews yet"
+          description="Create your first marketing draft to run Claim Court checks against your brand rules and facts."
+          actionLabel="Create First Review"
+          onAction={() => navigate('/app/reviews/new')}
+        />
       ) : (
         <DataTable
           data={items}

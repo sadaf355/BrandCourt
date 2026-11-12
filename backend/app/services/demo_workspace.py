@@ -23,6 +23,7 @@ from app.models.entities import (
     User,
     Workspace,
     Rule,
+    RuleExample,
     Fact,
     BrandAsset,
     ContentItem,
@@ -49,8 +50,82 @@ RULES = [
     ("IN-3", "Disclaimer cannot cure misleading main claim", "A disclaimer must not contradict or attempt to cure a misleading main claim. Flag absolute promises alongside disclaimer language for human review.", "disclosure", "critical"),
     ("IN-4", "Paid or gifted disclosure", "Paid or gifted creator content must use a clear disclosure such as #ad or Paid partnership, subject to current platform guidance.", "disclosure", "major"),
     ("IN-5", "Restricted cure and guaranteed-result wording", "Cure or guaranteed-result wording for health and skin products must be routed for human/legal review. This is not a legal determination.", "term", "critical"),
-    ("IN-6", "AI-generated media declaration", "Realistic AI-generated image/video may require a platform label. This is an advisory reminder; check current platform policy.", "disclosure", "advisory"),
+    ("IN-6", "AI-generated media declaration", "Realistic AI-generated image/video must include an AI disclosure label where required by current platform policy. This is an advisory reminder; check current platform policy.", "disclosure", "advisory"),
 ]
+
+RULE_EXAMPLES: dict[str, tuple[str, str]] = {
+    "IN-1": (
+        "Helps hydrate dry skin for 4 weeks (based on approved study FACT-RESULTS).",
+        "Clinically proven to boost skin hydration by 200% overnight.",
+    ),
+    "IN-2": (
+        "Formulated for daily skin hydration with hyaluronic acid.",
+        "India's #1 best skincare serum on the market.",
+    ),
+    "IN-3": (
+        "Supports smoother-looking skin with daily use.",
+        "Reverses ageing in 7 days! *Individual results may vary.",
+    ),
+    "IN-4": (
+        "GlowSerum partner update: loving this hydrating routine! #ad",
+        "Check out this gifted GlowSerum bottle I received from the brand!",
+    ),
+    "IN-5": (
+        "May help improve the appearance of blemish-prone skin.",
+        "Cures acne permanently with guaranteed results in 3 days.",
+    ),
+    "IN-6": (
+        "AI-assisted studio background disclosed in caption and platform settings.",
+        "Photorealistic AI-generated skin close-up posted without an AI label.",
+    ),
+    "DEMO-CONFLICT-A": (
+        "Discover gentle daily hydration with GlowSerum.",
+        "Discover gentle daily hydration with GlowSerum!",
+    ),
+    "DEMO-CONFLICT-B": (
+        "Discover gentle daily hydration with GlowSerum!",
+        "Discover gentle daily hydration with GlowSerum.",
+    ),
+    "DEMO-CONFLICT-C": (
+        "GlowSerum 30 ml — ₹799 for daily hydration.",
+        "GlowSerum 30 ml for daily hydration.",
+    ),
+    "DEMO-CONFLICT-D": (
+        "GlowSerum 30 ml for daily hydration.",
+        "GlowSerum 30 ml — ₹799 for daily hydration.",
+    ),
+    "DEMO-CONFLICT-E": (
+        "30 ml daily hydrating serum. Apply morning and night.",
+        "30 ml सीरम — सुबह और रात लगाएं।",
+    ),
+    "DEMO-CONFLICT-F": (
+        "30 ml hydrating serum / 30 ml हाइड्रेटिंग सीरम।",
+        "30 ml hydrating serum (English only).",
+    ),
+    "DEMO-CONFLICT-G": (
+        "Hydrate your skin daily. Shop GlowSerum via the link in bio.",
+        "Hydrate your skin daily with GlowSerum.",
+    ),
+    "DEMO-CONFLICT-H": (
+        "Hydrate your skin daily with GlowSerum.",
+        "Hydrate your skin daily. Shop GlowSerum via the link in bio.",
+    ),
+}
+
+
+async def ensure_rule_examples(db: Any, rule: Rule) -> None:
+    """Attach idempotent good/bad examples for a rule when defined in RULE_EXAMPLES."""
+    pair = RULE_EXAMPLES.get(rule.code)
+    if not pair:
+        return
+    good_text, bad_text = pair
+    existing_kinds = set(
+        (await db.scalars(select(RuleExample.kind).where(RuleExample.rule_id == rule.id))).all()
+    )
+    if "good" not in existing_kinds:
+        db.add(RuleExample(rule_id=rule.id, kind="good", text=good_text))
+    if "bad" not in existing_kinds:
+        db.add(RuleExample(rule_id=rule.id, kind="bad", text=bad_text))
 
 DEMO_DRAFTS = [
     {
@@ -312,9 +387,9 @@ async def ensure_demo_workspace(
 
             # 5. Core Rules (IN-1..IN-6)
             for code, title, text, typ, severity in RULES:
-                exists = await db.scalar(select(Rule.id).where(Rule.workspace_id == workspace_id, Rule.code == code, Rule.version == 1))
-                if not exists:
-                    db.add(Rule(
+                rule_row = await db.scalar(select(Rule).where(Rule.workspace_id == workspace_id, Rule.code == code, Rule.version == 1))
+                if not rule_row:
+                    rule_row = Rule(
                         workspace_id=workspace_id,
                         code=code,
                         title=title,
@@ -327,16 +402,20 @@ async def ensure_demo_workspace(
                         source_ref="India starter guidance; not legal advice. Fictional GlowSerum demo adaptation.",
                         created_by=admin_user.id,
                         confirmed_by=admin_user.id,
-                    ))
+                    )
+                    db.add(rule_row)
+                    await db.flush()
+                await ensure_rule_examples(db, rule_row)
 
             # Conflicting Rules for Guideline Health testing
             conflict_rules = [
-                ("DEMO-CONFLICT-A", "Never use exclamation marks in headlines", "Never use exclamation marks in headlines", "brand_voice", "advisory"),
-                ("DEMO-CONFLICT-B", "Use an exclamation mark in every headline", "Use an exclamation mark in every headline", "brand_voice", "advisory"),
+                ("DEMO-CONFLICT-A", "Headlines must not use exclamation marks", "Headlines must not use exclamation marks.", "brand_voice", "advisory"),
+                ("DEMO-CONFLICT-B", "Every headline must use an exclamation mark", "Every headline must use an exclamation mark.", "brand_voice", "advisory"),
             ]
             for code, title, text, typ, severity in conflict_rules:
-                if not await db.scalar(select(Rule.id).where(Rule.workspace_id == workspace_id, Rule.code == code, Rule.version == 1)):
-                    db.add(Rule(
+                rule_row = await db.scalar(select(Rule).where(Rule.workspace_id == workspace_id, Rule.code == code, Rule.version == 1))
+                if not rule_row:
+                    rule_row = Rule(
                         workspace_id=workspace_id,
                         code=code,
                         title=title,
@@ -349,24 +428,31 @@ async def ensure_demo_workspace(
                         source_ref="Fictional demo conflicting rules for testing guideline health",
                         created_by=admin_user.id,
                         confirmed_by=admin_user.id,
-                    ))
+                    )
+                    db.add(rule_row)
+                    await db.flush()
+                await ensure_rule_examples(db, rule_row)
 
             # Additional planted guideline-health proof cases: four known conflicts
             # and four deliberately vague rules. All are fictional demo-only guidelines.
             planted_conflicts = [
                 ("DEMO-CONFLICT-C", "Always include a price in paid-ad headlines", "Every paid-ad headline must display the current approved price."),
-                ("DEMO-CONFLICT-D", "Never show prices in paid-ad headlines", "Do not display any price in a paid-ad headline."),
+                ("DEMO-CONFLICT-D", "Never show prices in paid-ad headlines", "Every paid-ad headline must not display any price."),
                 ("DEMO-CONFLICT-E", "Use only English on packaging", "All packaging copy must be written only in English."),
                 ("DEMO-CONFLICT-F", "Packaging must be bilingual", "Every packaging panel must contain both English and Hindi copy."),
                 ("DEMO-CONFLICT-G", "Always include a CTA in Instagram captions", "Every Instagram caption must end with a call to action."),
                 ("DEMO-CONFLICT-H", "Never include a CTA in Instagram captions", "Instagram captions must not contain a call to action."),
             ]
             for code, title, text in planted_conflicts:
-                if not await db.scalar(select(Rule.id).where(Rule.workspace_id == workspace_id, Rule.code == code, Rule.version == 1)):
-                    db.add(Rule(workspace_id=workspace_id, code=code, title=title, text=text,
+                rule_row = await db.scalar(select(Rule).where(Rule.workspace_id == workspace_id, Rule.code == code, Rule.version == 1))
+                if not rule_row:
+                    rule_row = Rule(workspace_id=workspace_id, code=code, title=title, text=text,
                         type="brand_voice", severity="advisory", channels=["paid_ad"] if "paid-ad" in text else (["packaging"] if "packaging" in text else ["instagram"]),
                         status="active", version=1, source_ref="Planted Phase 4 guideline-health conflict test case",
-                        created_by=admin_user.id, confirmed_by=admin_user.id))
+                        created_by=admin_user.id, confirmed_by=admin_user.id)
+                    db.add(rule_row)
+                    await db.flush()
+                await ensure_rule_examples(db, rule_row)
             planted_vague = [
                 ("DEMO-VAGUE-1", "Use appropriate product language", "Use appropriate product language in every campaign."),
                 ("DEMO-VAGUE-2", "Maintain good quality visuals", "Maintain good quality visuals across social channels."),

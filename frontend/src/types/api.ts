@@ -465,6 +465,7 @@ export type GuidelineHealthReport = {
   issue_count: number
   issues: GuidelineHealthIssue[]
   method: string
+  model_mode?: string
   notice: string
 }
 

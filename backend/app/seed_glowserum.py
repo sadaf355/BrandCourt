@@ -18,7 +18,7 @@ from app.models.entities import (
     ContentItem,
     ContentRevision,
 )
-from app.services.demo_workspace import ensure_demo_workspace, RULES
+from app.services.demo_workspace import ensure_demo_workspace, ensure_rule_examples, RULES
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data" / "sample" / "glowserum_40_posts.jsonl"
@@ -67,9 +67,9 @@ async def seed(
             workspace.settings = settings_data
 
         for code, title, text, typ, severity in RULES:
-            exists = await db.scalar(select(Rule.id).where(Rule.workspace_id == workspace_id, Rule.code == code, Rule.version == 1))
-            if not exists:
-                db.add(Rule(
+            rule_row = await db.scalar(select(Rule).where(Rule.workspace_id == workspace_id, Rule.code == code, Rule.version == 1))
+            if not rule_row:
+                rule_row = Rule(
                     workspace_id=workspace_id,
                     code=code,
                     title=title,
@@ -82,7 +82,10 @@ async def seed(
                     source_ref="India starter guidance; not legal advice. Fictional GlowSerum demo adaptation; verify current regulations and platform rules.",
                     created_by=user.id,
                     confirmed_by=user.id,
-                ))
+                )
+                db.add(rule_row)
+                await db.flush()
+            await ensure_rule_examples(db, rule_row)
 
         facts = [
             ("FACT-RESULTS", "GlowSerum hydration duration", "4", "weeks", None, "2026-12-31T23:59:59+00:00", "Fictional product substantiation file v1"),
