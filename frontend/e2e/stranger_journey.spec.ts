@@ -121,14 +121,16 @@ test.describe('Judge resilience and stranger journey', () => {
 
     // Switch role to Reviewer and Manager and approve a clean draft end-to-end
     await page.getByRole('button', { name: /Switch to Reviewer/ }).click()
+    await expect(page.getByText('Reviewer access')).toBeVisible({ timeout: 10_000 })
     await page.getByRole('button', { name: /Switch to Manager/ }).click()
+    await expect(page.getByText('Manager access')).toBeVisible({ timeout: 10_000 })
 
     // Create a clean post, submit, start review, approve, and open compliance report
     await page.goto('/app/reviews/new')
     await page.locator('#review-title').fill('Stranger Judge Clean Post')
     await page.locator('textarea').first().fill('Enjoy a gentle daily skincare ritual with GlowSerum. #ad')
-    await page.getByRole('button', { name: /Create.*Review|Submit/i }).first().click()
-    await page.waitForURL('**/app/reviews/*')
+    await page.getByRole('button', { name: /Create Review & Open Claim Court/i }).click()
+    await page.waitForURL(/\/app\/reviews\/(?!new$)[^/]+/, { timeout: 20_000 })
 
     const runCleanBtn = page.getByRole('button', { name: /Run Claim Court Check/i })
     await runCleanBtn.click()
