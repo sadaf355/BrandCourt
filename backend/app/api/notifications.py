@@ -53,7 +53,8 @@ async def list_notifications(user: CurrentUser, db: DBSession):
     )).all()
     for f in facts:
         if f.valid_to:
-            diff_days = (f.valid_to - now).days
+            valid_to = f.valid_to if f.valid_to.tzinfo else f.valid_to.replace(tzinfo=timezone.utc)
+            diff_days = (valid_to - now).days
             if diff_days < 0:
                 notifications.append(NotificationItem(
                     id=f'notif-fact-exp-{f.id}',

@@ -52,8 +52,8 @@ export function ReviewProgress({ job, onRetry, onManualReview }: ReviewProgressP
             Claim Court Review Job
           </h4>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted, #94a3b8)' }}>
-            Job ID: <strong style={{ fontFamily: 'monospace' }}>{job.id}</strong> · Status:{' '}
-            <strong style={{ textTransform: 'capitalize', color: isFailed ? '#ef4444' : '#6366f1' }}>
+            Job ID: <strong style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{job.id}</strong> · Status:{' '}
+            <strong style={{ textTransform: 'capitalize', color: isFailed ? '#ef4444' : 'var(--accent, #0f766e)' }}>
               {job.status}
             </strong>
           </span>
@@ -151,7 +151,7 @@ export function ReviewProgress({ job, onRetry, onManualReview }: ReviewProgressP
               ) : isStageFailed ? (
                 <AlertCircle size={16} color="#ef4444" />
               ) : isCurrent ? (
-                <Clock size={16} color="#6366f1" className="animate-spin" />
+                <Clock size={16} color="var(--accent, #0f766e)" className="animate-spin" />
               ) : (
                 <span
                   style={{
@@ -172,8 +172,8 @@ export function ReviewProgress({ job, onRetry, onManualReview }: ReviewProgressP
                     : isStageFailed
                     ? '#ef4444'
                     : isCurrent
-                    ? 'var(--accent, #818cf8)'
-                    : 'var(--color-text-muted, #94a3b8)',
+                    ? 'var(--accent, #0f766e)'
+                    : 'var(--color-text-muted, #475569)',
                 }}
               >
                 {s.label}

@@ -143,9 +143,9 @@ export function ConfirmDialog({
             style={{
               padding: '0.5rem 1.25rem',
               borderRadius: '6px',
-              backgroundColor: isDestructive ? '#ef4444' : 'var(--accent, #6366f1)',
+              backgroundColor: isDestructive ? '#dc2626' : 'var(--btn-primary-bg, #0f766e)',
               border: 'none',
-              color: '#ffffff',
+              color: 'var(--btn-primary-fg, #ffffff)',
               fontWeight: 600,
               fontSize: '0.85rem',
               cursor: 'pointer',

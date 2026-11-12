@@ -66,9 +66,9 @@ export function FindingCard({
       style={{
         borderRadius: '12px',
         border: isSelected
-          ? '2px solid var(--accent, #6366f1)'
-          : '1px solid var(--color-border, rgba(148, 163, 184, 0.2))',
-        backgroundColor: 'var(--color-bg-panel, rgba(30, 41, 59, 0.6))',
+          ? '2px solid var(--accent, #0f766e)'
+          : '1px solid var(--color-border, #e2e8f0)',
+        backgroundColor: 'var(--color-bg-panel, #ffffff)',
         padding: '1.25rem',
         marginBottom: '1rem',
         cursor: 'pointer',
@@ -238,8 +238,8 @@ export function FindingCard({
                   fontSize: '0.75rem',
                   padding: '0.2rem 0.5rem',
                   borderRadius: '4px',
-                  backgroundColor: isSafeFix ? 'var(--accent, #6366f1)' : '#64748b',
-                  color: '#ffffff',
+                  backgroundColor: isSafeFix ? 'var(--btn-primary-bg, #0f766e)' : '#64748b',
+                  color: 'var(--btn-primary-fg, #ffffff)',
                   border: 'none',
                   cursor: isSafeFix ? 'pointer' : 'not-allowed',
                 }}
@@ -474,7 +474,7 @@ export function FindingCard({
                   {new Date(dec.created_at).toLocaleTimeString()}
                 </span>
               </div>
-              <div style={{ textTransform: 'capitalize', color: 'var(--accent, #818cf8)' }}>
+              <div style={{ textTransform: 'capitalize', color: 'var(--accent, #0f766e)' }}>
                 Action: {dec.action}
               </div>
               {dec.note && <div style={{ fontStyle: 'italic', marginTop: '0.15rem' }}>"{dec.note}"</div>}

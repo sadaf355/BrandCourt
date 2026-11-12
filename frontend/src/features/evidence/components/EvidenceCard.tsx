@@ -23,11 +23,11 @@ export function EvidenceCard({ evidence, isActive = false, onClick }: EvidenceCa
         padding: '1rem',
         borderRadius: '10px',
         border: isActive
-          ? '2px solid var(--accent, #6366f1)'
-          : '1px solid var(--color-border, rgba(148, 163, 184, 0.2))',
+          ? '2px solid var(--accent, #0f766e)'
+          : '1px solid var(--color-border, #e2e8f0)',
         backgroundColor: isActive
-          ? 'var(--color-bg-subtle, rgba(99, 102, 241, 0.08))'
-          : 'var(--color-bg-panel, rgba(30, 41, 59, 0.5))',
+          ? 'var(--color-bg-subtle, #f8fafc)'
+          : 'var(--color-bg-panel, #ffffff)',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'all 0.15s ease',
         marginBottom: '0.75rem',

@@ -43,7 +43,7 @@ export function EmptyState({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'var(--accent, #6366f1)',
+          color: 'var(--accent, #0f766e)',
           marginBottom: '1rem',
         }}
       >

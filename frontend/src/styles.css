@@ -517,6 +517,7 @@ fieldset {
   flex-direction: column;
   background: var(--page);
   box-sizing: border-box;
+  overflow-x: clip;
 }
 
 .topbar {
@@ -607,8 +608,45 @@ fieldset {
 
 .main-content {
   max-width: 1440px;
-  padding: 31px 39px 24px;
+  width: 100%;
+  padding: 28px 36px 32px;
   margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.review-workbench-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.05fr) minmax(300px, 1.2fr) minmax(260px, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.review-workbench-grid > *,
+.main-content > *,
+.page-container {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.main-content .page-container {
+  padding: 0 !important;
+}
+
+.workbench-panel {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1120px) {
+  .review-workbench-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 780px) {
+  .review-workbench-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .hero-card {
@@ -1232,7 +1270,19 @@ fieldset {
   }
 
   .app-main {
-    margin-left: var(--sidebar-width);
+    margin-left: 0;
+  }
+
+  .topbar {
+    padding: 8px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .topbar-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+    max-width: 100%;
   }
 
   .hero-visual {
@@ -1262,8 +1312,13 @@ fieldset {
 
 @media (max-width: 560px) {
   .topbar {
-    height: 60px;
-    padding: 0 15px;
+    min-height: 56px;
+    height: auto;
+    padding: 8px 12px;
+  }
+
+  .breadcrumbs {
+    display: none;
   }
 
   .environment-badge {
@@ -5651,11 +5706,11 @@ button.bg-emerald-600:hover {
 }
 
 .text-indigo-300 {
-  color: #3730a3 !important;
+  color: var(--accent-ink, #0f766e) !important;
 }
 
 .text-indigo-400 {
-  color: #4338ca !important;
+  color: var(--accent, #0f766e) !important;
 }
 
 .text-emerald-400 {
@@ -5676,11 +5731,11 @@ button.bg-emerald-600:hover {
 }
 
 :root.dark .text-indigo-300 {
-  color: #a5b4fc !important;
+  color: var(--accent-ink, #99f6e4) !important;
 }
 
 :root.dark .text-indigo-400 {
-  color: #818cf8 !important;
+  color: var(--accent, #2dd4bf) !important;
 }
 
 :root.dark .text-emerald-400 {

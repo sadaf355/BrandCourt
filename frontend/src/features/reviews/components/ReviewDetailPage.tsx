@@ -229,7 +229,7 @@ export function ReviewDetailPage({ user }: { user: User }) {
     return (
       <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
         <Skeleton height="40px" width="300px" />
-        <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+        <div className="review-workbench-grid" style={{ marginTop: '1.5rem' }}>
           <Skeleton height="350px" />
           <Skeleton height="350px" />
           <Skeleton height="350px" />
@@ -315,7 +315,7 @@ export function ReviewDetailPage({ user }: { user: User }) {
         </div>
 
         {/* Action Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setShowRevisionHistory((prev) => !prev)}
@@ -496,16 +496,8 @@ export function ReviewDetailPage({ user }: { user: User }) {
         </button>
       </div>
 
-      {/* Three Panel Workbench (Desktop: 3 columns; Mobile: tabs) */}
-      <div
-        className="workbench-grid"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(300px, 1.1fr) minmax(320px, 1.2fr) minmax(280px, 1fr)',
-          gap: '1.25rem',
-          alignItems: 'start',
-        }}
-      >
+      {/* Three Panel Workbench (Desktop: 3 columns; Mobile: tabs / 1 column) */}
+      <div className="workbench-grid review-workbench-grid">
         {/* PANEL 1: Content, Creative Preview, Spans */}
         <div
           className="workbench-panel"
@@ -599,9 +591,9 @@ export function ReviewDetailPage({ user }: { user: User }) {
                   width: '100%',
                   padding: '0.75rem',
                   borderRadius: '6px',
-                  backgroundColor: 'var(--color-bg-subtle, rgba(0, 0, 0, 0.25))',
-                  border: '1px solid var(--accent, #6366f1)',
-                  color: 'var(--color-text-primary, #ffffff)',
+                  backgroundColor: 'var(--color-bg-subtle, #f8fafc)',
+                  border: '1px solid var(--accent, #0f766e)',
+                  color: 'var(--color-text-primary, #0f172a)',
                   fontSize: '0.875rem',
                   lineHeight: 1.5,
                   marginBottom: '0.5rem',
@@ -609,13 +601,14 @@ export function ReviewDetailPage({ user }: { user: User }) {
               />
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                 <button
+                  type="button"
                   onClick={() => setIsEditing(false)}
                   style={{
                     padding: '0.35rem 0.75rem',
                     fontSize: '0.75rem',
                     backgroundColor: 'transparent',
-                    border: '1px solid rgba(148, 163, 184, 0.3)',
-                    color: '#cbd5e1',
+                    border: '1px solid var(--color-border, #e2e8f0)',
+                    color: 'var(--color-text-secondary, #334155)',
                     borderRadius: '4px',
                     cursor: 'pointer',
                   }}
@@ -623,13 +616,14 @@ export function ReviewDetailPage({ user }: { user: User }) {
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleSaveRevision}
                   style={{
                     padding: '0.35rem 0.85rem',
                     fontSize: '0.75rem',
                     fontWeight: 600,
-                    backgroundColor: 'var(--accent, #6366f1)',
-                    color: '#ffffff',
+                    backgroundColor: 'var(--btn-primary-bg, #0f766e)',
+                    color: 'var(--btn-primary-fg, #ffffff)',
                     border: 'none',
                     borderRadius: '4px',
                     cursor: 'pointer',

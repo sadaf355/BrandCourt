@@ -73,7 +73,7 @@ export function ModelSettingsPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
-          <Cpu className="text-indigo-400" size={26} />
+          <Cpu style={{ color: 'var(--accent, #0f766e)' }} size={26} />
           Model Architecture & Privacy Controls
         </h1>
         <p className="text-sm text-slate-400">
@@ -179,13 +179,13 @@ export function ModelSettingsPage() {
       <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/60 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <Activity size={16} className="text-indigo-400" />
+            <Activity size={16} style={{ color: 'var(--accent, #0f766e)' }} />
             Model / Service Data-Flow Log (Last 20 Invocations)
           </h2>
           <span className="text-xs text-slate-400 font-mono">Table: ai_calls</span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" style={{ overflowX: 'auto', maxWidth: '100%' }}>
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400 font-medium">

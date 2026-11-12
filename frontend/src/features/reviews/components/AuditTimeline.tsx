@@ -46,8 +46,8 @@ export function AuditTimeline({ events }: AuditTimelineProps) {
                 width: '16px',
                 height: '16px',
                 borderRadius: '50%',
-                backgroundColor: 'var(--accent, #6366f1)',
-                border: '3px solid var(--color-bg-panel, #0f172a)',
+                backgroundColor: 'var(--accent, #0f766e)',
+                border: '3px solid var(--color-bg-panel, #ffffff)',
               }}
             />
 

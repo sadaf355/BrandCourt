@@ -255,11 +255,13 @@ export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, o
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
+                  flexWrap: 'wrap',
+                  maxWidth: '100%',
                   gap: '0.2rem',
-                  padding: '0.15rem 0.35rem',
-                  borderRadius: '0.375rem',
+                  padding: '0.2rem 0.4rem',
+                  borderRadius: '0.5rem',
                   border: '1px solid var(--border, #cbd5e1)',
-                  background: 'var(--bg-subtle, #f1f5f9)',
+                  background: 'var(--surface-muted, #f1f5f9)',
                   marginRight: '0.35rem',
                 }}
               >
@@ -267,7 +269,7 @@ export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, o
                   style={{
                     fontSize: '0.72rem',
                     fontWeight: 600,
-                    color: 'var(--fg-muted, #64748b)',
+                    color: 'var(--text-muted, #475569)',
                     padding: '0 0.2rem',
                     whiteSpace: 'nowrap',
                   }}
