@@ -10,7 +10,7 @@
 
 **Evidence-led brand content governance, multi-modal automated compliance & approval gateway.**
 
-[Key Features](#key-features) • [System Architecture](#system-architecture) • [Getting Started](#getting-started) • [Workflow & Roles](#workflow--roles) • [Configuration](#configuration) • [Deployment](#deployment) • [Evaluation](#evaluation--benchmarks)
+[Key Features](#key-features) • [System Architecture](#system-architecture) • [Getting Started](#getting-started) • [Workflow & Roles](#workflow--roles) • [Configuration](#configuration-reference) • [Deployment](#production-deployment) • [Evaluation](#evaluation--benchmarks)
 
 </div>
 
@@ -285,17 +285,18 @@ python -m pytest -s tests/test_analysis_golden.py::test_all_glowserum_seed_posts
 All pull requests and commits run through a strict automated CI verification pipeline:
 
 ```bash
-# Frontend Unit & Contract Tests
+# Frontend Unit & Contract Tests (19 passed across 5 files — measured 2026-11-13)
 cd frontend
+npm ci
 npm run lint
 npm test -- --run
 npm run build
 
-# Frontend Playwright End-to-End Suite
+# Frontend Playwright End-to-End Suite (36 passed across 7 suites — measured 2026-11-13)
 npx playwright install chromium
 npm run test:e2e
 
-# Backend Unit & Integration Tests (181 passed, 6 skipped — measured 2026-11-12)
+# Backend Unit & Integration Tests (181 passed, 6 skipped — measured 2026-11-13)
 cd backend
 # Install dependencies first (required before pytest):
 pip install -r requirements.txt
@@ -304,7 +305,7 @@ pytest -v
 
 > **Note on frontend tests:** `npm test -- --run` is correct for Vitest 5.x (the `test.poolOptions` deprecation warning from `npm test` without `--run` is cosmetic and does not affect results).
 >
-> **Note on backend tests:** `pip install -r requirements.txt` must be run from the `backend/` directory before running `pytest`. Of the 6 skipped tests (measured 2026-11-12): 5 are in `tests/test_image_intelligence.py` and require an installed Tesseract executable; 1 is in `tests/test_migrations_clean.py` and requires `TEST_POSTGRES_URL` to be configured. None are failures.
+> **Note on backend tests:** `pip install -r requirements.txt` must be run from the `backend/` directory before running `pytest`. Of the 6 skipped tests (measured 2026-11-13): 5 are in `tests/test_image_intelligence.py` and require an installed Tesseract executable; 1 is in `tests/test_migrations_clean.py` and requires `TEST_POSTGRES_URL` to be configured. None are failures.
 
 ---
 
@@ -329,7 +330,7 @@ Test a proposed copy edit before resubmitting. The engine runs a full analysis o
 
 - **Evaluation corpus:** The 52 GlowSerum posts are fictional and have historical exposure to rule development. The 100% exact-match result is a regression score, not a held-out accuracy estimate.
 - **Ollama variants:** `retrieval_and_nli` and `full_pipeline` checks require a running Ollama service. They were not measured in this session.
-- **Image OCR:** Five expected visual labels exist in the dataset, but corresponding source image files are not included. Image-analysis accuracy is not claimed.
+- **Image analysis & OCR:** Five expected visual labels exist in the dataset, but corresponding source image files are not included. The three analysed images (`frontend/public/landing/skincare.webp`, `desk.webp`, `shield-poster.webp`) are landing-page stock images analysed with an arbitrary test palette, NOT real creatives or brand creatives. OCR was unavailable (Tesseract not installed locally), the result for each was `needs_human_review`, and this demonstrates the safe fallback only, not OCR or brand-colour accuracy. Do not claim anything about OCR accuracy.
 - **Language coverage:** Hindi/Marathi and mixed-script (Hinglish) content has limited automated coverage. Human review by a fluent speaker is required.
 - **Demo workspace:** The demo runs `MODEL_MODE=deterministic`. Uploaded files are lost on hosting restarts (local disk storage). The free-tier API may sleep when idle.
 - **Workflow gaps:** Comment resolution, email invitations, member removal, and workspace deletion are not fully exposed as end-to-end product actions.

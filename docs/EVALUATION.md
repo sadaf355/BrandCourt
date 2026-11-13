@@ -54,6 +54,8 @@ Provide the five original image files, upload each through the API, verify OCR a
 execution in the persisted revision/job records, and report per-image TP/FP/FN plus failures.
 Do not use landing-page stock artwork as a substitute for the intended GlowSerum test cases.
 
+The three analysed images (`frontend/public/landing/skincare.webp`, `desk.webp`, `shield-poster.webp`) must be described as "landing-page stock images analysed with an arbitrary test palette", NOT as real creatives or brand creatives. OCR was unavailable (Tesseract not installed locally), the result for each was `needs_human_review`, and this demonstrates the safe fallback only, not OCR or brand-colour accuracy. Do not claim anything about OCR accuracy.
+
 ## Holdout integrity
 
 The existing 52-row set has already informed rule development and regression work. A split made

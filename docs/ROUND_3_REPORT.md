@@ -84,7 +84,7 @@ Tested on GlowSerum Instagram Reel copy (`"Experience India's #1 radiant skin fo
 
 ### 4.2 Landing-Page Stock Image Analysis — Safe-Fallback Demonstration Only
 
-> **Important:** The three images analysed here (`skincare.webp`, `desk.webp`, `shield-poster.webp`) are **landing-page stock images** shipped with the repository at `frontend/public/landing/`. They are **not** GlowSerum brand creatives or campaign assets, and the palette `['#FF7A59', '#1A202C']` supplied to the call is an **arbitrary test palette** that does not correspond to any configured brand. These results demonstrate that the safe-fallback degradation paths work correctly; they say nothing about OCR accuracy or brand-colour accuracy on real brand content.
+> **Important:** The three analysed images (`frontend/public/landing/skincare.webp`, `desk.webp`, `shield-poster.webp`) are **landing-page stock images analysed with an arbitrary test palette**, NOT real creatives or brand creatives. OCR was unavailable (Tesseract not installed locally), and the result for each was `needs_human_review`. This demonstrates the safe fallback only, not OCR or brand-colour accuracy. Do not claim anything about OCR accuracy.
 
 Command run (in `backend/` on 12 November 2026):
 ```python
@@ -102,11 +102,11 @@ for name in ['skincare.webp', 'desk.webp', 'shield-poster.webp']:
 | `desk.webp` | `unavailable` — same reason | `#1B1C17` ΔE 11.45, `#E9E8E5` ΔE 31.93, `#8E5B2B` ΔE 27.14, `#B0A89F` ΔE 24.66 — all → `review` | `needs_human_review` | `needs_human_review` | `needs_human_review` |
 | `shield-poster.webp` | `unavailable` — same reason | `#050D10` ΔE 8.47, `#25AB9A` ΔE 50.16, `#396871` ΔE 26.05, `#C9EBE8` ΔE 42.71 — all → `review` | `needs_human_review` | `needs_human_review` | `needs_human_review` |
 
-**What this confirms:** Every inconclusive check produces `needs_human_review` with specific finding codes (`ocr_unavailable`, `brand_color_mismatch`, `logo_detection_unavailable`), and no technical failure produces a false approval. **What this does not confirm:** OCR accuracy, brand-colour accuracy on real creatives, or passing any image finding against GlowSerum's actual palette.
+**What this confirms:** Every inconclusive check produces `needs_human_review` with specific finding codes (`ocr_unavailable`, `brand_color_mismatch`, `logo_detection_unavailable`), and no technical failure produces a false approval. This demonstrates the safe fallback only. **What this does not confirm:** This does not demonstrate OCR or brand-colour accuracy. No claims are made about OCR accuracy, brand-colour accuracy on real creatives, or passing any image finding against GlowSerum's actual palette.
 
 ---
 
-## 5. Verification Performed in This Session (12 November 2026)
+## 5. Verification Performed in This Session (13 November 2026)
 
 All commands were directly executed in the workspace with recorded outputs:
 
@@ -117,14 +117,17 @@ All commands were directly executed in the workspace with recorded outputs:
    - Command: `python -m app.seed_glowserum --email demo-admin@glowserum.com --demo --demo-password DemoSecret123!`
    - Result: **PASSED** — 5 demo drafts seeded with status `completed` and 0 failures.
 3. **Frontend Dependencies & Build:**
-   - Commands: `npm install` and `npm run build` (from `frontend/`)
+   - Commands: `npm ci` and `npm run build` (from `frontend/`)
    - Result: **PASSED** — 3,118 modules transformed, clean production build in `dist/`.
 4. **Frontend Unit & Contract Tests:**
    - Command: `npm test -- --run` (Vitest 5.1.0)
    - Result: **PASSED** — 5 test files, **19 passed** (0 failed).
 5. **Backend Automated Tests:**
-   - Command: `pytest -rs -q` (from `backend/`)
-   - Result: **PASSED** — **181 passed, 6 skipped** in 317.36s.
+   - Command: `python -m pytest -rs -q` (from `backend/`)
+   - Result: **PASSED** — **181 passed, 6 skipped** in 184.30s.
    - Skip reasons (exact, from `-rs` output):
      - 5 skipped — `tests/test_image_intelligence.py:38`: `Real OCR integration requires an installed Tesseract executable.`
      - 1 skipped — `tests/test_migrations_clean.py:282`: `TEST_POSTGRES_URL is not configured`
+6. **Playwright End-to-End Tests:**
+   - Command: `npx playwright test` (from `frontend/`) against a fresh SQLite database with `alembic upgrade head`, `MODEL_MODE=deterministic`, `DEMO_LOGIN_ENABLED=true`, `JOB_WORKER_ENABLED=true`
+   - Result: **PASSED** — 7 test suites, **36 passed** (0 failed) in 4.7m.
