@@ -66,10 +66,10 @@ export function AssetsPage() {
   const logos = assets.filter((a) => a.asset_type === 'logo')
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Brand Assets</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+    <div className="page-container" data-testid="assets-page">
+      <div className="page-header">
+        <h1 className="page-header__title">Brand Assets</h1>
+        <p className="page-header__subtitle">
           Manage logos, palette, fonts and term lists
         </p>
       </div>

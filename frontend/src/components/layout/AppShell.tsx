@@ -256,21 +256,19 @@ export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, o
                   display: 'inline-flex',
                   alignItems: 'center',
                   flexWrap: 'wrap',
-                  maxWidth: '100%',
-                  gap: '0.2rem',
-                  padding: '0.2rem 0.4rem',
-                  borderRadius: '0.5rem',
-                  border: '1px solid var(--border, #cbd5e1)',
-                  background: 'var(--surface-muted, #f1f5f9)',
-                  marginRight: '0.35rem',
+                  gap: '4px',
+                  padding: '2px 4px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface-muted)',
                 }}
               >
                 <span
                   style={{
-                    fontSize: '0.72rem',
+                    fontSize: '12px',
                     fontWeight: 600,
-                    color: 'var(--text-muted, #475569)',
-                    padding: '0 0.2rem',
+                    color: 'var(--text-muted)',
+                    padding: '0 6px',
                     whiteSpace: 'nowrap',
                   }}
                 >
@@ -285,15 +283,16 @@ export function AppShell({ user, workspaceName = 'Brand Workspace', onSignOut, o
                       disabled={switchingRole}
                       onClick={() => handleDemoRoleSwitch(role)}
                       style={{
-                        padding: '0.2rem 0.5rem',
-                        fontSize: '0.72rem',
+                        height: '28px',
+                        padding: '0 10px',
+                        fontSize: '12px',
                         fontWeight: isCurrent ? 700 : 500,
-                        borderRadius: '0.25rem',
+                        borderRadius: '6px',
                         border: 'none',
                         background: isCurrent ? 'var(--btn-primary-bg, #0f766e)' : 'transparent',
-                        color: isCurrent ? '#ffffff' : 'var(--text, #0f172a)',
+                        color: isCurrent ? '#ffffff' : 'var(--text-soft)',
                         cursor: switchingRole ? 'not-allowed' : 'pointer',
-                        transition: 'background 0.15s ease',
+                        transition: 'background 0.15s ease, color 0.15s ease',
                       }}
                       title={`${label}: ${summary}`}
                       aria-label={`Switch to ${label} (${summary})`}

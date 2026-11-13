@@ -85,10 +85,10 @@ export function GuidelinesPage() {
   const confirmedCount = drafts.filter((d) => d.confirmed).length
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Guidelines</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+    <div className="page-container" data-testid="guidelines-page">
+      <div className="page-header">
+        <h1 className="page-header__title">Guidelines</h1>
+        <p className="page-header__subtitle">
           Upload a brand guideline document to extract draft rules for review
         </p>
       </div>

@@ -66,11 +66,11 @@ export function RulesPage({ userRole }: { userRole: Role }) {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-wrap gap-4 items-end justify-between">
+    <div className="page-container" data-testid="rules-page">
+      <div className="page-header--row">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Brand Rules</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+          <h1 className="page-header__title">Brand Rules</h1>
+          <p className="page-header__subtitle">
             {rules.length} rule{rules.length !== 1 ? 's' : ''} shown
           </p>
         </div>

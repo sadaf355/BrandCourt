@@ -36,3 +36,5 @@ frontend/playwright-report/
 frontend/test-results/
 brandcourt.db*
 uploads/
+docs/ui-before/
+docs/ui-after/

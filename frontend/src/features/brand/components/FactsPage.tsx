@@ -61,21 +61,19 @@ export function FactsPage() {
   const expiring = facts.filter((f) => f.expiry_warning)
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex items-end justify-between gap-4 flex-wrap">
+    <div className="page-container" data-testid="facts-page">
+      <div className="page-header--row">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Approved Facts</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+          <h1 className="page-header__title">Approved Facts</h1>
+          <p className="page-header__subtitle">
             {facts.length} fact{facts.length !== 1 ? 's' : ''} in workspace
           </p>
         </div>
         <button
           onClick={() => setShowForm((s) => !s)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl
-                     bg-purple-600 hover:bg-purple-700 text-white transition-colors
-                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+          className="btn btn--primary"
         >
-          <Plus className="w-4 h-4" aria-hidden="true" />
+          <Plus size={16} aria-hidden="true" />
           Add Fact
         </button>
       </div>

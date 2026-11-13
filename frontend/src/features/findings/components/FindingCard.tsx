@@ -69,8 +69,8 @@ export function FindingCard({
           ? '2px solid var(--accent, #0f766e)'
           : '1px solid var(--color-border, #e2e8f0)',
         backgroundColor: 'var(--color-bg-panel, #ffffff)',
-        padding: '1.25rem',
-        marginBottom: '1rem',
+        padding: '20px',
+        marginBottom: '16px',
         cursor: 'pointer',
         transition: 'all 0.15s ease',
         boxShadow: isSelected ? '0 8px 24px -4px rgba(99, 102, 241, 0.25)' : 'none',
@@ -84,26 +84,26 @@ export function FindingCard({
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: '0.5rem',
-          marginBottom: '0.75rem',
+          gap: '8px',
+          marginBottom: '12px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <SeverityBadge severity={finding.severity} />
           <StatusBadge status={finding.state} />
         </div>
         {finding.confidence !== undefined && (
-          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted, #94a3b8)' }}>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-muted, #94a3b8)' }}>
             Confidence: <strong>{Math.round(finding.confidence * 100)}%</strong>
           </span>
         )}
       </div>
 
       {/* Claim Span / Text */}
-      <div style={{ marginBottom: '0.75rem' }}>
+      <div style={{ marginBottom: '12px' }}>
         <span
           style={{
-            fontSize: '0.75rem',
+            fontSize: '12px',
             textTransform: 'uppercase',
             fontWeight: 700,
             color: 'var(--color-text-muted, #94a3b8)',
@@ -114,14 +114,14 @@ export function FindingCard({
         </span>
         <div
           style={{
-            marginTop: '0.25rem',
-            padding: '0.5rem 0.75rem',
-            borderRadius: '6px',
+            marginTop: '8px',
+            padding: '12px',
+            borderRadius: '8px',
             backgroundColor: 'var(--color-bg-subtle, rgba(0, 0, 0, 0.2))',
-            borderLeft: `3px solid ${finding.severity === 'critical' ? '#ef4444' : finding.severity === 'major' ? '#f97316' : '#3b82f6'
+            borderLeft: `3px solid ${finding.severity === 'critical' ? 'var(--severity-critical-text, #be123c)' : finding.severity === 'major' ? 'var(--severity-major-text, #b45309)' : 'var(--accent, #0f766e)'
               }`,
             fontFamily: 'monospace',
-            fontSize: '0.875rem',
+            fontSize: '14px',
             color: 'var(--color-text-primary, #ffffff)',
           }}
         >
@@ -130,7 +130,7 @@ export function FindingCard({
       </div>
 
       {/* Rationale */}
-      <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary, #cbd5e1)', margin: '0 0 0.75rem 0', lineHeight: 1.5 }}>
+      <p style={{ fontSize: '14px', color: 'var(--color-text-secondary, #cbd5e1)', margin: '0 0 12px 0', lineHeight: 1.5 }}>
         {finding.rationale}
       </p>
 
@@ -139,11 +139,11 @@ export function FindingCard({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '0.75rem',
+          gap: '12px',
           flexWrap: 'wrap',
-          fontSize: '0.75rem',
+          fontSize: '12px',
           color: 'var(--color-text-muted, #94a3b8)',
-          marginBottom: '1rem',
+          marginBottom: '16px',
         }}
       >
         <span>
@@ -158,9 +158,9 @@ export function FindingCard({
           <span
             style={{
               textTransform: 'capitalize',
-              backgroundColor: 'rgba(148, 163, 184, 0.1)',
-              padding: '0.1rem 0.4rem',
-              borderRadius: '4px',
+              backgroundColor: 'var(--surface-muted, rgba(148, 163, 184, 0.1))',
+              padding: '2px 8px',
+              borderRadius: '999px',
             }}
           >
             Layer: {finding.layer}
@@ -169,8 +169,8 @@ export function FindingCard({
       </div>
 
       <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.stopPropagation()}>
-        <button type="button" onClick={runSuggestFix} disabled={fixBusy} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white disabled:opacity-50">{fixBusy ? 'Verifying…' : 'Suggest fix'}</button>
-        <button type="button" onClick={loadPrecedents} disabled={precedentBusy} className="px-3 py-1.5 rounded-lg text-xs border border-slate-600 text-slate-200 disabled:opacity-50">{precedentBusy ? 'Finding precedents…' : 'Show precedent suggestions'}</button>
+        <button type="button" onClick={runSuggestFix} disabled={fixBusy} className="btn btn--sm btn--primary">{fixBusy ? 'Verifying…' : 'Suggest fix'}</button>
+        <button type="button" onClick={loadPrecedents} disabled={precedentBusy} className="btn btn--sm btn--secondary">{precedentBusy ? 'Finding precedents…' : 'Show precedent suggestions'}</button>
       </div>
       {fixResult && <div className="mb-3 p-3 rounded-lg border border-slate-700 bg-slate-800/70 text-xs" onClick={(e) => e.stopPropagation()}>
         <strong className={fixResult.accepted ? 'text-emerald-400' : 'text-amber-400'}>{fixResult.accepted ? 'Fix verified — safe to suggest' : 'Fix not approved'}</strong>
@@ -180,7 +180,7 @@ export function FindingCard({
             type="button"
             disabled={actionBusy}
             onClick={() => onEdit(fixResult.suggested_fix)}
-            className="mt-2 px-3 py-1 rounded text-xs font-semibold bg-emerald-600 text-white disabled:opacity-50"
+            className="mt-2 btn btn--sm btn--primary"
           >
             Apply suggested fix to draft
           </button>
@@ -197,18 +197,18 @@ export function FindingCard({
       {precedents.length > 0 && <div className="mb-3 space-y-2" onClick={(e) => e.stopPropagation()}>{precedents.map((item) => <div key={item.precedent_id} className="p-3 rounded-lg border border-slate-700 bg-slate-800/60 text-xs">
         <p className="text-slate-100 font-medium">{item.pattern_text}</p><p className="text-slate-400 mt-1">{item.reason} · Similarity {Math.round(item.similarity * 100)}%</p>
         <p className="text-amber-300 mt-1">Reviewer confirmation required. Critical findings cannot be downgraded.</p>
-        <button type="button" disabled={finding.severity === 'critical' || finding.state !== 'open'} onClick={async () => { try { await apiClient.confirmPrecedentSuggestion(finding.id, item.precedent_id); await loadPrecedents() } catch (error) { setPrecedentError(error instanceof Error ? error.message : 'Confirmation failed') } }} className="mt-2 px-2.5 py-1 rounded bg-emerald-700 text-white disabled:opacity-40">Reviewer confirm</button>
+        <button type="button" disabled={finding.severity === 'critical' || finding.state !== 'open'} onClick={async () => { try { await apiClient.confirmPrecedentSuggestion(finding.id, item.precedent_id); await loadPrecedents() } catch (error) { setPrecedentError(error instanceof Error ? error.message : 'Confirmation failed') } }} className="mt-2 btn btn--sm btn--primary">Reviewer confirm</button>
       </div>)}</div>}
 
       {/* Suggested Fix and Intent Preserved */}
       {finding.suggested_fix && (
         <div
           style={{
-            padding: '0.875rem',
+            padding: '12px',
             borderRadius: '8px',
-            backgroundColor: isSafeFix ? 'rgba(34, 197, 94, 0.05)' : 'rgba(239, 68, 68, 0.05)',
-            border: `1px solid ${isSafeFix ? 'rgba(34, 197, 94, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`,
-            marginBottom: '1rem',
+            backgroundColor: isSafeFix ? 'var(--severity-success-bg, rgba(34, 197, 94, 0.05))' : 'var(--severity-critical-bg, rgba(239, 68, 68, 0.05))',
+            border: `1px solid ${isSafeFix ? 'var(--severity-success-border, rgba(34, 197, 94, 0.25))' : 'var(--severity-critical-border, rgba(239, 68, 68, 0.25))'}`,
+            marginBottom: '16px',
           }}
         >
           <div
@@ -216,10 +216,10 @@ export function FindingCard({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginBottom: '0.35rem',
+              marginBottom: '8px',
             }}
           >
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 600, color: isSafeFix ? '#22c55e' : '#ef4444' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: isSafeFix ? 'var(--severity-success-text, #15803d)' : 'var(--severity-critical-text, #be123c)' }}>
               <Sparkles size={13} />
               <span>Suggested Fix {isSafeFix ? '(Safe)' : '(Unsafe / Blocks auto-accept)'}</span>
             </div>
@@ -231,30 +231,19 @@ export function FindingCard({
                   onEdit(finding.suggested_fix!)
                 }}
                 disabled={!isSafeFix}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.3rem',
-                  fontSize: '0.75rem',
-                  padding: '0.2rem 0.5rem',
-                  borderRadius: '4px',
-                  backgroundColor: isSafeFix ? 'var(--btn-primary-bg, #0f766e)' : '#64748b',
-                  color: 'var(--btn-primary-fg, #ffffff)',
-                  border: 'none',
-                  cursor: isSafeFix ? 'pointer' : 'not-allowed',
-                }}
+                className="btn btn--sm btn--primary"
                 title={isSafeFix ? 'Apply this fix to a new revision' : 'Unsafe fix cannot be auto-applied'}
               >
-                {!isSafeFix ? <Lock size={11} /> : <Edit2 size={11} />} Apply fix
+                {!isSafeFix ? <Lock size={12} /> : <Edit2 size={12} />} Apply fix
               </button>
             )}
           </div>
           <div
             style={{
               fontFamily: 'monospace',
-              fontSize: '0.825rem',
+              fontSize: '13px',
               color: 'var(--color-text-primary, #ffffff)',
-              marginBottom: '0.5rem',
+              marginBottom: '8px',
             }}
           >
             "{finding.suggested_fix}"
@@ -263,10 +252,10 @@ export function FindingCard({
           {finding.intent_preserved && (
             <div
               style={{
-                fontSize: '0.75rem',
+                fontSize: '12px',
                 color: 'var(--color-text-muted, #94a3b8)',
-                borderTop: '1px solid rgba(148, 163, 184, 0.15)',
-                paddingTop: '0.4rem',
+                borderTop: '1px solid var(--border, rgba(148, 163, 184, 0.15))',
+                paddingTop: '8px',
               }}
             >
               <div>
@@ -292,9 +281,9 @@ export function FindingCard({
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '8px',
             flexWrap: 'wrap',
-            paddingTop: '0.75rem',
+            paddingTop: '12px',
             borderTop: '1px solid var(--color-border, rgba(148, 163, 184, 0.15))',
           }}
           onClick={(e) => e.stopPropagation()}
@@ -304,21 +293,7 @@ export function FindingCard({
               type="button"
               onClick={onAccept}
               disabled={actionBusy || finding.state === 'accepted'}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                padding: '0.4rem 0.75rem',
-                borderRadius: '6px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                backgroundColor:
-                  finding.state === 'accepted' ? 'rgba(34, 197, 94, 0.2)' : 'var(--color-bg-subtle, rgba(255, 255, 255, 0.08))',
-                border: '1px solid var(--color-border, rgba(148, 163, 184, 0.25))',
-                color: finding.state === 'accepted' ? '#047857' : 'var(--color-text-primary, #ffffff)',
-                cursor: actionBusy || finding.state === 'accepted' ? 'default' : 'pointer',
-                opacity: actionBusy ? 0.6 : 1,
-              }}
+              className="btn btn--sm btn--primary"
             >
               <Check size={14} /> {finding.state === 'accepted' ? 'Accepted ✓' : 'Accept finding'}
             </button>
@@ -329,19 +304,7 @@ export function FindingCard({
               type="button"
               disabled={actionBusy}
               onClick={() => setDisputeOpen((prev) => !prev)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                padding: '0.4rem 0.75rem',
-                borderRadius: '6px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                backgroundColor: 'transparent',
-                border: '1px solid var(--color-border, rgba(148, 163, 184, 0.25))',
-                color: 'var(--color-text-secondary, #cbd5e1)',
-                cursor: 'pointer',
-              }}
+              className="btn btn--sm btn--ghost"
             >
               <HelpCircle size={14} /> Dispute
             </button>

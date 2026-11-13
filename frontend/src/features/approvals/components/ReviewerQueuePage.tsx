@@ -81,22 +81,20 @@ export function ReviewerQueuePage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex flex-wrap gap-4 items-end justify-between">
+    <div className="page-container" data-testid="reviewer-queue-page">
+      <div className="page-header--row">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reviewer Queue</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+          <h1 className="page-header__title">Reviewer Queue</h1>
+          <p className="page-header__subtitle">
             {total} item{total !== 1 ? 's' : ''} pending review
           </p>
         </div>
         <button
           onClick={() => refetch()}
-          className="flex items-center gap-2 px-3 py-2 text-sm border rounded-lg
-                     border-gray-200 dark:border-gray-700 hover:bg-gray-50
-                     dark:hover:bg-gray-800 transition-colors"
+          className="btn btn--secondary"
           aria-label="Refresh queue"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw size={16} />
           Refresh
         </button>
       </div>

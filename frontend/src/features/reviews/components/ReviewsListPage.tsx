@@ -90,39 +90,27 @@ export function ReviewsListPage() {
   ]
 
   return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '1.5rem 1rem' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          marginBottom: '1.5rem',
-        }}
-      >
+    <div className="page-container" data-testid="reviews-list-page">
+      <div className="page-header--row">
         <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0 0 0.25rem 0' }}>Content Reviews</h2>
-          <p style={{ color: 'var(--color-text-muted, #94a3b8)', fontSize: '0.875rem', margin: 0 }}>
+          <h1 className="page-header__title">Content Reviews</h1>
+          <p className="page-header__subtitle">
             Inspect marketing creatives and copy through Claim Court before public release.
           </p>
         </div>
 
         <button
           onClick={() => navigate('/app/reviews/new')}
-          className="landing-btn landing-btn--primary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}
+          className="btn btn--primary"
         >
           <Plus size={16} /> New Review
         </button>
       </div>
 
       {loading ? (
-        <div>
+        <div className="space-y-4">
           <Skeleton height="50px" />
-          <div style={{ marginTop: '0.5rem' }}>
-            <Skeleton height="200px" />
-          </div>
+          <Skeleton height="200px" />
         </div>
       ) : error ? (
         <ErrorState message={error} onRetry={loadData} />

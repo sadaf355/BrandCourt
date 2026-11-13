@@ -56,8 +56,7 @@ export function EmptyState({
       {actionLabel && onAction && (
         <button
           onClick={onAction}
-          className="landing-btn landing-btn--primary"
-          style={{ fontSize: '0.85rem', padding: '0.5rem 1.25rem' }}
+          className="btn btn--primary"
         >
           {actionLabel}
         </button>
@@ -120,21 +119,9 @@ export function ErrorState({
       {retryHandler && (
         <button
           onClick={retryHandler}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.5rem 1rem',
-            borderRadius: '6px',
-            backgroundColor: '#ef4444',
-            color: '#ffffff',
-            fontWeight: 500,
-            fontSize: '0.85rem',
-            border: 'none',
-            cursor: 'pointer',
-          }}
+          className="btn btn--primary"
         >
-          <RefreshCw size={14} /> {retryLabel}
+          <RefreshCw size={16} /> {retryLabel}
         </button>
       )}
     </div>
@@ -189,20 +176,9 @@ export function PermissionDeniedState({
       {onBack && (
         <button
           onClick={onBack}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.5rem 1rem',
-            borderRadius: '6px',
-            backgroundColor: 'var(--color-bg-subtle, rgba(255, 255, 255, 0.1))',
-            color: 'var(--color-text-primary, #ffffff)',
-            border: '1px solid var(--color-border, rgba(255, 255, 255, 0.2))',
-            cursor: 'pointer',
-            fontSize: '0.85rem',
-          }}
+          className="btn btn--secondary"
         >
-          <ArrowLeft size={14} /> Return to previous view
+          <ArrowLeft size={16} /> Return to previous view
         </button>
       )}
     </div>

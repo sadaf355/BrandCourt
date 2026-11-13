@@ -52,27 +52,27 @@ export function AuditTrailPage({ currentUserRole }: AuditTrailPageProps) {
   const currentPage = Math.floor(offset / limit) + 1
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="page-container" data-testid="audit-trail-page">
+      <div className="page-header--row">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <History className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+          <h1 className="page-header__title">
+            <History className="text-teal-600 dark:text-teal-400" size={26} />
             Audit Trail
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+          <p className="page-header__subtitle">
             Immutable, append-only ledger of all decisions, overrides, and revisions.
           </p>
         </div>
       </div>
 
       {/* Scope Filter Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-700 pb-3">
+      <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-800 pb-3 mb-6">
         <button
           onClick={() => { setScope('own'); setOffset(0) }}
-          className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+          className={`btn btn--sm ${
             scope === 'own'
-              ? 'bg-purple-600 text-white'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+              ? 'btn--primary'
+              : 'btn--ghost'
           }`}
         >
           My Actions
@@ -81,10 +81,10 @@ export function AuditTrailPage({ currentUserRole }: AuditTrailPageProps) {
         {currentUserRole !== 'creator' && (
           <button
             onClick={() => { setScope('assigned'); setOffset(0) }}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+            className={`btn btn--sm ${
               scope === 'assigned'
-                ? 'bg-purple-600 text-white'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                ? 'btn--primary'
+                : 'btn--ghost'
             }`}
           >
             Assigned Reviews
@@ -94,10 +94,10 @@ export function AuditTrailPage({ currentUserRole }: AuditTrailPageProps) {
         {(currentUserRole === 'manager' || currentUserRole === 'admin') && (
           <button
             onClick={() => { setScope('workspace'); setOffset(0) }}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+            className={`btn btn--sm ${
               scope === 'workspace'
-                ? 'bg-purple-600 text-white'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                ? 'btn--primary'
+                : 'btn--ghost'
             }`}
           >
             Workspace-Wide
@@ -107,13 +107,13 @@ export function AuditTrailPage({ currentUserRole }: AuditTrailPageProps) {
         {(currentUserRole === 'manager' || currentUserRole === 'admin') && (
           <button
             onClick={() => { setScope('rules'); setOffset(0) }}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+            className={`btn btn--sm ${
               scope === 'rules'
-                ? 'bg-purple-600 text-white'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                ? 'btn--primary'
+                : 'btn--ghost'
             }`}
           >
-            Rule & Fact History
+            Rule History
           </button>
         )}
       </div>

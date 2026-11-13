@@ -91,37 +91,37 @@ export function PrecedentLedgerPage() {
   })
 
   return (
-    <div className="page-container p-6 space-y-6" data-testid="precedent-ledger-page">
+    <div className="page-container" data-testid="precedent-ledger-page">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="page-header--row">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
-            <Scale className="text-indigo-400" size={26} />
+          <h1 className="page-header__title">
+            <Scale className="text-teal-600 dark:text-teal-400" size={26} />
             Precedent Ledger
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="page-header__subtitle">
             Case law repository for approved phrasing exceptions, marketing context carve-outs, and promoted draft rules.
           </p>
         </div>
 
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 transition-colors shadow-sm"
+          className="btn btn--primary"
         >
-          <Plus size={15} /> Record Precedent
+          <Plus size={16} /> Record Precedent
         </button>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 mb-6">
         {(['all', 'pending', 'approved'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setFilter(tab)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            className={`btn btn--sm ${
               filter === tab
-                ? 'bg-indigo-600 text-white border border-indigo-500/30'
-                : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
+                ? 'btn--primary'
+                : 'btn--ghost'
             }`}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)} ({precedents.filter((p) => (tab === 'all' ? true : p.status === tab)).length})
@@ -140,15 +140,15 @@ export function PrecedentLedgerPage() {
           {filtered.map((item) => (
             <div
               key={item.id}
-              className="p-5 rounded-xl border border-slate-800 bg-slate-900/60 hover:border-slate-700 transition-all"
+              className="card card-standard mb-4"
             >
               <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2.5">
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
+                    className={`badge badge-pill ${
                       item.status === 'approved'
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                        ? 'badge-success'
+                        : 'badge-major'
                     }`}
                   >
                     {item.status}
@@ -170,7 +170,7 @@ export function PrecedentLedgerPage() {
                 <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
                   Matched Content Pattern
                 </div>
-                <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 text-xs font-mono text-slate-200">
+                <div className="card-nested text-xs font-mono text-slate-200">
                   "{item.pattern_text}"
                 </div>
               </div>
@@ -180,18 +180,18 @@ export function PrecedentLedgerPage() {
                 <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
                   Established Precedent Justification
                 </div>
-                <p className="text-xs text-slate-300 leading-relaxed bg-slate-800/40 p-3 rounded-lg border border-slate-700/60">
+                <p className="card-nested text-xs text-slate-300 leading-relaxed">
                   {item.reason}
                 </p>
               </div>
 
               {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
                 {item.status === 'pending' && (
                   <button
                     onClick={() => approveMutation.mutate(item.id)}
                     disabled={approveMutation.isPending}
-                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    className="btn btn--sm btn--primary"
                   >
                     <CheckCircle2 size={14} /> Approve Precedent
                   </button>
@@ -201,7 +201,7 @@ export function PrecedentLedgerPage() {
                   <button
                     onClick={() => promoteMutation.mutate(item.id)}
                     disabled={promoteMutation.isPending}
-                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    className="btn btn--sm btn--secondary"
                   >
                     <ArrowUpRight size={14} /> Promote to Draft Rule
                   </button>

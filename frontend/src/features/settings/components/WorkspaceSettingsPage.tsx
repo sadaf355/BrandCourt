@@ -33,10 +33,10 @@ export function WorkspaceSettingsPage({ currentUserRole }: WorkspaceSettingsPage
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Workspace Settings</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+    <div className="page-container" data-testid="workspace-settings-page">
+      <div className="page-header">
+        <h1 className="page-header__title">Workspace Settings</h1>
+        <p className="page-header__subtitle">
           View your workspace identity and data boundary.
         </p>
       </div>

@@ -6,6 +6,7 @@ import {
   Edit3,
   EyeOff,
   Sparkles,
+  AlertTriangle,
   Info,
 } from 'lucide-react'
 import { apiClient } from '../../../lib/api'
@@ -43,7 +44,7 @@ export function GuidelineHealthPage() {
 
   if (isLoading) {
     return (
-      <div className="page-container p-6 space-y-4">
+      <div className="page-container space-y-4">
         <Skeleton height="36px" width="300px" />
         <Skeleton height="120px" />
         <Skeleton height="200px" />
@@ -53,7 +54,7 @@ export function GuidelineHealthPage() {
 
   if (isError) {
     return (
-      <div className="page-container p-6">
+      <div className="page-container">
         <ErrorState
           title="Could not evaluate guideline health"
           message="Failed to execute heuristic guideline conflict and ambiguity screening."
@@ -92,26 +93,27 @@ export function GuidelineHealthPage() {
   }
 
   return (
-    <div className="page-container p-6 space-y-6" data-testid="guideline-health-page">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="page-container" data-testid="guideline-health-page">
+      {/* Standard Page Header */}
+      <div className="page-header--row">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
-            <HeartPulse className="text-pink-500" size={26} />
-            Guideline Health & Conflict Radar
+          <h1 className="page-header__title">
+            <HeartPulse className="text-teal-600 dark:text-teal-400" size={26} />
+            Guideline Health
           </h1>
-          <p className="text-sm text-slate-400">
-            Heuristic detection of ambiguous phrasing, contradictory rule pairs, and high-override friction points.
+          <p className="page-header__subtitle">
+            Heuristic screening of unclear and conflicting rules
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">
-          <Info size={14} className="text-indigo-400" />
+        {/* Compact Stat Row with Model Mode Badge */}
+        <div className="health-summary-stat">
+          <Info size={14} className="text-teal-600 dark:text-teal-400" />
           <span>
-            {healthReport?.active_rules ?? 0} active rules · {issues.length} issue{issues.length === 1 ? '' : 's'} shown ({conflictCount} conflict{conflictCount === 1 ? '' : 's'}, {vagueCount} vague{overrideCount ? `, ${overrideCount} override rate` : ''})
+            {healthReport?.active_rules ?? 0} active rules · {issues.length} issue{issues.length === 1 ? '' : 's'} ({conflictCount} conflict{conflictCount === 1 ? '' : 's'}, {vagueCount} vague{overrideCount ? `, ${overrideCount} override rate` : ''})
           </span>
           {healthReport?.model_mode && (
-            <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+            <span className="badge badge-pill badge-advisory font-mono text-[11px] px-2 py-0.5">
               {healthReport.model_mode}
             </span>
           )}
@@ -119,7 +121,7 @@ export function GuidelineHealthPage() {
       </div>
 
       {/* Advisory Notice */}
-      <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 flex items-start gap-3 text-xs text-indigo-300">
+      <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 flex items-start gap-3 text-xs text-indigo-300 mb-6">
         <Sparkles size={16} className="text-indigo-400 mt-0.5 shrink-0" />
         <div>
           <span className="font-semibold text-gray-900 dark:text-white">Heuristic screening notice:</span> Lexical similarity and override
@@ -139,55 +141,81 @@ export function GuidelineHealthPage() {
           {issues.map((issue, idx) => {
             const isAccepted = Boolean(issue.issue_key && acceptedKeys.includes(issue.issue_key))
             const isEditing = editingIndex === idx
+            const isConflict = issue.type === 'possible_conflict'
+
+            // Parse conflicting rules if available
+            const codes = issue.code.includes(' / ') ? issue.code.split(' / ') : [issue.code]
+            const titles = issue.title.includes(' ↔ ') ? issue.title.split(' ↔ ') : [issue.title]
 
             return (
               <div
                 key={idx}
-                className={`p-5 rounded-xl border transition-all ${
-                  isAccepted
-                    ? 'border-emerald-500/30 bg-emerald-500/5'
-                    : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+                className={`health-issue-card ${
+                  isAccepted ? 'border-emerald-500/30 bg-emerald-500/5' : ''
                 }`}
               >
-                {/* Title and Badges */}
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
-                        issue.type === 'possible_conflict'
-                          ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                          : issue.type === 'high_override_rate'
-                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                          : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                      }`}
-                    >
-                      {issue.type.replace(/_/g, ' ')}
+                {/* Header row: Single Status Badge + Rule Codes */}
+                <div className="health-card-header">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {isConflict ? (
+                      <span className="badge badge-pill badge-major">
+                        <AlertTriangle size={12} /> Possible conflict - needs human review
+                      </span>
+                    ) : issue.type === 'vague_rule' ? (
+                      <span className="badge badge-pill badge-review">
+                        <Sparkles size={12} /> Vague rule - needs human review
+                      </span>
+                    ) : (
+                      <span className="badge badge-pill badge-advisory">
+                        <Info size={12} /> {issue.type.replace(/_/g, ' ')} - needs human review
+                      </span>
+                    )}
+                    <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400">
+                      {issue.code}
                     </span>
-                    <span className="text-xs font-mono text-slate-400">{issue.code}</span>
                   </div>
 
                   {isAccepted && (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400">
-                      <CheckCircle2 size={14} /> Accepted & Updated
+                    <span className="badge badge-pill badge-success">
+                      <CheckCircle2 size={12} /> Accepted & Updated
                     </span>
                   )}
                 </div>
 
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1.5">{issue.title}</h3>
-                <p className="text-xs text-slate-300 leading-relaxed mb-4">{issue.explanation}</p>
-                {issue.analysis_status && (
-                  <p className="text-[11px] text-amber-400 font-medium mb-2">
-                    {issue.analysis_status === 'candidate_only'
-                      ? 'Possible conflict, needs human review'
-                      : `Analysis status: ${issue.analysis_status.replace(/_/g, ' ')}`}
-                  </p>
+                {/* Conflicting Rules as Two Equal Quote Blocks with "vs" Divider */}
+                {isConflict && titles.length >= 2 ? (
+                  <>
+                    <div className="conflict-grid">
+                      <div className="conflict-block">
+                        <div className="conflict-block__header">
+                          <span className="conflict-block__code">{codes[0] || 'Rule A'}</span>
+                        </div>
+                        <p className="conflict-block__text">"{titles[0]}"</p>
+                      </div>
+                      <div className="conflict-vs">
+                        <span className="conflict-vs__pill">vs</span>
+                      </div>
+                      <div className="conflict-block">
+                        <div className="conflict-block__header">
+                          <span className="conflict-block__code">{codes[1] || 'Rule B'}</span>
+                        </div>
+                        <p className="conflict-block__text">"{titles[1]}"</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed mb-4">{issue.explanation}</p>
+                  </>
+                ) : (
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1.5">{issue.title}</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed mb-4">{issue.explanation}</p>
+                  </div>
                 )}
 
-                {/* Suggested Wording Box */}
-                <div className="p-3.5 rounded-lg border border-slate-700/80 bg-slate-800/60 mb-4">
-                  <div className="text-[11px] font-semibold text-indigo-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                    <Sparkles size={12} />
-                    Suggested Objective Revision
+                {/* Suggested Revision Block with 12px padding and 8px gap under heading */}
+                <div className="suggested-revision-block">
+                  <div className="suggested-revision-header">
+                    <Sparkles size={13} />
+                    <span>Suggested revision</span>
                   </div>
 
                   {isEditing ? (
@@ -196,55 +224,63 @@ export function GuidelineHealthPage() {
                         value={editText}
                         onChange={(e) => setEditText(e.target.value)}
                         rows={3}
-                        className="w-full text-xs bg-slate-900 border border-indigo-500/50 rounded-lg p-2.5 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="w-full text-xs"
                       />
                       <div className="flex justify-end gap-2">
                         <button
+                          type="button"
                           onClick={() => setEditingIndex(null)}
-                          className="px-3 py-1 rounded text-xs text-slate-400 hover:text-white"
+                          className="btn btn--sm btn--ghost"
                         >
                           Cancel
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleSaveEdit(issue)}
                           disabled={decisionMutation.isPending}
-                          className="px-3.5 py-1 rounded text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white"
+                          className="btn btn--sm btn--primary"
                         >
                           Save & Apply
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-200 italic">"{issue.suggestion}"</p>
+                    <p className="suggested-revision-text">"{issue.suggestion}"</p>
                   )}
                 </div>
 
-                {/* Actions */}
+                {/* Right-aligned action row: Ignore ghost, Edit wording secondary, Accept primary with 12px gaps */}
                 {!isAccepted && !isEditing && (
-                  <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800/80">
+                  <div className="health-card-actions">
                     <button
+                      type="button"
                       onClick={() => handleIgnore(idx)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors flex items-center gap-1"
+                      className="btn btn--sm btn--ghost"
+                      aria-label="Ignore"
                     >
                       <EyeOff size={13} />
-                      Ignore
+                      <span>Ignore</span>
                     </button>
 
                     <button
+                      type="button"
                       onClick={() => handleStartEdit(issue, idx)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors flex items-center gap-1"
+                      className="btn btn--sm btn--secondary"
+                      aria-label="Edit wording"
                     >
                       <Edit3 size={13} />
-                      Edit Wording
+                      <span>Edit wording</span>
                     </button>
 
                     <button
+                      type="button"
                       onClick={() => handleAcceptSuggestion(issue)}
                       disabled={decisionMutation.isPending}
-                      className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center gap-1 shadow-sm"
+                      className="btn btn--sm btn--primary"
+                      aria-label="Accept"
                     >
                       <CheckCircle2 size={13} />
-                      Accept Suggestion
+                      <span>Accept</span>
                     </button>
                   </div>
                 )}
@@ -256,4 +292,5 @@ export function GuidelineHealthPage() {
     </div>
   )
 }
+
 

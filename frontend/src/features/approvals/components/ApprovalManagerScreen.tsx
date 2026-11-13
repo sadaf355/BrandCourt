@@ -106,13 +106,13 @@ export function ApprovalManagerScreen() {
   const isRejected = content.status === 'rejected'
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="page-container" data-testid="approval-manager-screen">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{content.title}</h1>
-        <div className="flex items-center gap-3 mt-2">
+      <div className="page-header">
+        <h1 className="page-header__title">{content.title}</h1>
+        <div className="flex items-center gap-3">
           <StatusBadge status={content.status} />
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="page-header__subtitle">
             {content.channel} · {content.campaign}
           </span>
         </div>

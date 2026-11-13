@@ -55,14 +55,12 @@ export function MemberManagementPage({ currentUserId, currentUserRole }: {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Members</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            {members.length} workspace member{members.length !== 1 ? 's' : ''}
-          </p>
-        </div>
+    <div className="page-container" data-testid="member-management-page">
+      <div className="page-header">
+        <h1 className="page-header__title">Members</h1>
+        <p className="page-header__subtitle">
+          {members.length} workspace member{members.length !== 1 ? 's' : ''}
+        </p>
       </div>
 
       {members.length === 0 ? (
