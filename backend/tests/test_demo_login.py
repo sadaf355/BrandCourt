@@ -1,10 +1,16 @@
 import asyncio
+import os
+import subprocess
+import sys
+import uuid
 from pathlib import Path
 import pytest
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from app.core.config import settings
-from app.models.entities import Workspace, User, LoginRateLimit
+from app.models.entities import Workspace, User, LoginRateLimit, Rule, AuditEvent
 from app.services.demo_workspace import ensure_demo_workspace, set_demo_ready, is_demo_ready
+from app.api.intelligence import guideline_health
 from app.core.storage import LocalStorage
 
 
@@ -115,6 +121,215 @@ def test_demo_reset_on_start_only_deletes_demo_workspace(test_database, tmp_path
             assert demo_ws.settings.get("is_demo") is True
 
     asyncio.run(verify_reset())
+
+
+def test_demo_reset_fk_safe_reprovision_sqlite(test_database, tmp_path: Path):
+    storage = LocalStorage(tmp_path / "uploads")
+
+    async def run_sqlite_test():
+        # 1. Initial provision
+        res1 = await ensure_demo_workspace(
+            sessions=test_database,
+            storage=storage,
+            upload_dir=tmp_path / "uploads",
+            demo_password="demo-test-pw-1234",
+            skip_creatives=True,
+            reset_on_start=False,
+        )
+        ws_id = res1["workspace_id"]
+
+        # 2. Add custom rules and audit events created by demo admin
+        async with test_database() as session:
+            admin_u = await session.scalar(
+                select(User).where(User.workspace_id == ws_id, User.email == "demo-admin@glowserum.com")
+            )
+            assert admin_u is not None
+            extra_rule = Rule(
+                workspace_id=ws_id,
+                code="EXTRA-CUSTOM-RULE",
+                title="Extra Custom Rule",
+                text="Extra rule created by user that should be cleared on reset.",
+                type="brand_voice",
+                severity="advisory",
+                channels=["instagram"],
+                status="active",
+                version=1,
+                created_by=admin_u.id,
+                confirmed_by=admin_u.id,
+            )
+            session.add(extra_rule)
+            extra_audit = AuditEvent(
+                workspace_id=ws_id,
+                actor_id=admin_u.id,
+                type="custom.admin.action",
+                payload={"action": "test"},
+            )
+            session.add(extra_audit)
+            await session.commit()
+
+        # 3. Reset demo workspace with reset_on_start=True
+        res_reset = await ensure_demo_workspace(
+            sessions=test_database,
+            storage=storage,
+            upload_dir=tmp_path / "uploads",
+            demo_password="demo-test-pw-1234",
+            skip_creatives=True,
+            reset_on_start=True,
+        )
+        assert res_reset["workspace_id"] == ws_id
+
+        # 4. Verify Guideline Health returns exactly 8 issues and extra rule is gone
+        async with test_database() as session:
+            admin_u = await session.scalar(
+                select(User).where(User.workspace_id == ws_id, User.email == "demo-admin@glowserum.com")
+            )
+            assert admin_u is not None
+            gh = await guideline_health(user=admin_u, db=session)
+            assert gh["issue_count"] == 8
+
+            extra = await session.scalar(
+                select(Rule).where(Rule.workspace_id == ws_id, Rule.code == "EXTRA-CUSTOM-RULE")
+            )
+            assert extra is None
+
+            audits = (await session.scalars(select(AuditEvent).where(AuditEvent.workspace_id == ws_id))).all()
+            assert len(audits) > 0
+
+    asyncio.run(run_sqlite_test())
+
+
+@pytest.mark.skipif(not os.getenv("TEST_POSTGRES_URL"), reason="TEST_POSTGRES_URL is not configured")
+def test_demo_reset_fk_safe_reprovision_postgres(tmp_path: Path):
+    import asyncpg
+    from sqlalchemy.engine import make_url
+
+    backend = Path(__file__).resolve().parents[1]
+    admin_url = make_url(os.environ["TEST_POSTGRES_URL"])
+    database_name = f"brandcourt_demo_reset_{uuid.uuid4().hex[:12]}"
+    admin_database_url = admin_url.set(database="postgres")
+    target_url = admin_url.set(database=database_name)
+
+    async def create_db():
+        connection = await asyncpg.connect(
+            host=admin_database_url.host,
+            port=admin_database_url.port or 5432,
+            user=admin_database_url.username,
+            password=admin_database_url.password,
+            database=admin_database_url.database,
+        )
+        try:
+            await connection.execute(f'CREATE DATABASE "{database_name}"')
+        finally:
+            await connection.close()
+
+    asyncio.run(create_db())
+    try:
+        env = os.environ.copy()
+        env["DATABASE_URL"] = target_url.render_as_string(hide_password=False)
+        subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=backend,
+            env=env,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        async def run_test_steps():
+            engine = create_async_engine(target_url.render_as_string(hide_password=False))
+            pg_sessions = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            storage = LocalStorage(tmp_path / "uploads")
+            try:
+                # 1. Initial provision on PostgreSQL
+                res1 = await ensure_demo_workspace(
+                    sessions=pg_sessions,
+                    storage=storage,
+                    upload_dir=tmp_path / "uploads",
+                    demo_password="demo-test-pw-1234",
+                    skip_creatives=True,
+                    reset_on_start=False,
+                )
+                ws_id = res1["workspace_id"]
+
+                # 2. Add custom rules and audit events created by demo admin
+                async with pg_sessions() as session:
+                    admin_u = await session.scalar(
+                        select(User).where(User.workspace_id == ws_id, User.email == "demo-admin@glowserum.com")
+                    )
+                    assert admin_u is not None
+                    extra_rule = Rule(
+                        workspace_id=ws_id,
+                        code="EXTRA-CUSTOM-PG-RULE",
+                        title="Extra Custom PostgreSQL Rule",
+                        text="Extra rule created by user that should be cleared on reset.",
+                        type="brand_voice",
+                        severity="advisory",
+                        channels=["instagram"],
+                        status="active",
+                        version=1,
+                        created_by=admin_u.id,
+                        confirmed_by=admin_u.id,
+                    )
+                    session.add(extra_rule)
+                    extra_audit = AuditEvent(
+                        workspace_id=ws_id,
+                        actor_id=admin_u.id,
+                        type="custom.admin.action",
+                        payload={"action": "test_pg"},
+                    )
+                    session.add(extra_audit)
+                    await session.commit()
+
+                # 3. Reset demo workspace on PostgreSQL (tests FK-safe deletion and audit trigger non-violation)
+                res_reset = await ensure_demo_workspace(
+                    sessions=pg_sessions,
+                    storage=storage,
+                    upload_dir=tmp_path / "uploads",
+                    demo_password="demo-test-pw-1234",
+                    skip_creatives=True,
+                    reset_on_start=True,
+                )
+                assert res_reset["workspace_id"] == ws_id
+
+                # 4. Verify Guideline Health returns 8 issues and extra rule is gone
+                async with pg_sessions() as session:
+                    admin_u = await session.scalar(
+                        select(User).where(User.workspace_id == ws_id, User.email == "demo-admin@glowserum.com")
+                    )
+                    assert admin_u is not None
+                    gh = await guideline_health(user=admin_u, db=session)
+                    assert gh["issue_count"] == 8
+
+                    extra = await session.scalar(
+                        select(Rule).where(Rule.workspace_id == ws_id, Rule.code == "EXTRA-CUSTOM-PG-RULE")
+                    )
+                    assert extra is None
+
+                    audits = (await session.scalars(select(AuditEvent).where(AuditEvent.workspace_id == ws_id))).all()
+                    assert len(audits) > 0
+            finally:
+                await engine.dispose()
+
+        asyncio.run(run_test_steps())
+    finally:
+        async def drop_db():
+            drop_conn = await asyncpg.connect(
+                host=admin_database_url.host,
+                port=admin_database_url.port or 5432,
+                user=admin_database_url.username,
+                password=admin_database_url.password,
+                database=admin_database_url.database,
+            )
+            try:
+                await drop_conn.execute(
+                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()",
+                    database_name,
+                )
+                await drop_conn.execute(f'DROP DATABASE IF EXISTS "{database_name}"')
+            finally:
+                await drop_conn.close()
+
+        asyncio.run(drop_db())
 
 
 def test_demo_status_and_disabled_login(api_client, monkeypatch):

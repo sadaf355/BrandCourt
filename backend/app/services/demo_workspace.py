@@ -12,12 +12,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, delete, update
 from fastapi import BackgroundTasks
 
 from app.core.config import settings
 from app.core.security import hash_password
 from app.core.storage import get_storage, Storage
+from app.db.base import Base
 from app.db.session import SessionLocal
 from app.models.entities import (
     User,
@@ -231,6 +232,48 @@ async def run_demo_startup_provisioning() -> None:
         logger.error(f"Demo workspace provisioning failed: {exc}", exc_info=True)
 
 
+async def reset_demo_workspace_data(db: Any, workspace_id: str) -> None:
+    """Safely wipe demo workspace child domain records in reverse FK order.
+
+    Walks Base.metadata.sorted_tables in reverse topological order (children before
+    parents). Preserves Workspace, Users, and AuditEvents:
+    - audit_events is append-only on PostgreSQL (guarded by a BEFORE UPDATE OR DELETE
+      database trigger). Deleting audit_events violates this trigger.
+    - users.id is referenced by audit_events.actor_id with ON DELETE SET NULL. Deleting
+      users causes PostgreSQL to attempt UPDATE audit_events SET actor_id = NULL,
+      which fires the append-only trigger.
+    - workspaces.id is referenced by audit_events.workspace_id with ON DELETE CASCADE.
+      Deleting workspace causes PostgreSQL to attempt DELETE FROM audit_events, which
+      also fires the append-only trigger.
+
+    By retaining the demo Workspace and seed Users while clearing all content,
+    revisions, findings, decisions, comments, precedents, rules, rule examples,
+    facts, assets, guideline documents, jobs, and cache, the reset is 100%
+    foreign-key safe and adheres strictly to PostgreSQL trigger constraints.
+    """
+    logger.info("Performing FK-safe reset of demo workspace %s...", workspace_id)
+    skip_tables = {"audit_events", "workspaces", "users", "login_rate_limits"}
+
+    for table in reversed(Base.metadata.sorted_tables):
+        if table.name in skip_tables:
+            continue
+        try:
+            if table.name == "review_comments":
+                await db.execute(update(table).where(table.c.workspace_id == workspace_id).values(parent_id=None))
+            elif table.name == "refresh_tokens":
+                await db.execute(update(table).where(table.c.workspace_id == workspace_id).values(replaced_by=None))
+            elif table.name == "rule_examples":
+                rule_ids_subq = select(Rule.id).where(Rule.workspace_id == workspace_id)
+                await db.execute(delete(RuleExample).where(RuleExample.rule_id.in_(rule_ids_subq)))
+                continue
+
+            if "workspace_id" in [c.name for c in table.columns]:
+                await db.execute(delete(table).where(table.c.workspace_id == workspace_id))
+        except Exception as exc:
+            logger.error("Failed to reset demo workspace table '%s': %s", table.name, exc, exc_info=True)
+            raise
+
+
 async def ensure_demo_workspace(
     sessions=SessionLocal,
     storage: Storage | None = None,
@@ -249,7 +292,7 @@ async def ensure_demo_workspace(
         active_storage = storage or get_storage()
         uploads = Path(upload_dir) if upload_dir is not None else Path(settings.upload_dir)
 
-        # 1. Reset logic if requested: delete only the demo workspace
+        # 1. Reset logic if requested: delete child records of demo workspace in FK-safe order
         if reset_on_start:
             async with sessions() as db:
                 candidates = (await db.scalars(select(Workspace))).all()
@@ -268,11 +311,14 @@ async def ensure_demo_workspace(
                     )
                     if is_demo and has_demo_user:
                         logger.warning(f"Resetting existing demo workspace '{cand.name}' ({cand.id})...")
-                        users_to_del = (await db.scalars(select(User).where(User.workspace_id == cand.id))).all()
-                        for u in users_to_del:
-                            await db.delete(u)
-                        await db.delete(cand)
-                        await db.commit()
+                        try:
+                            await reset_demo_workspace_data(db, cand.id)
+                            await db.commit()
+                            logger.info(f"Demo workspace '{cand.name}' ({cand.id}) reset successfully.")
+                        except Exception as exc:
+                            await db.rollback()
+                            logger.error(f"Demo workspace reset failed and was rolled back: {exc}", exc_info=True)
+                            raise
                         break
 
         # 2. Locate or create the demo workspace
