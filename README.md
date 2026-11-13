@@ -27,6 +27,10 @@
 
 > **Decision Support Notice**: BrandCourt is a decision-support governance platform. Findings are evidence-led signals designed to assist human reviewers—not legal advice, statutory certification, or an absolute guarantee of regulatory compliance.
 
+**Live Demo:** The frontend is deployed to Vercel and the backend to Render (see [render.yaml](render.yaml) and [vercel.json](vercel.json)). Configure `VITE_API_BASE_URL` in your Vercel environment to point at your deployed backend.
+
+**Demo Access:** On the login page, click the **Demo** button. No password required. This logs you into the fictional GlowSerum workspace with pre-seeded content (5 demo drafts in `demo_mode: true`). The demo workspace is a shared public workspace — do not enter real brand or personal data.
+
 ---
 
 ## System Architecture
@@ -132,7 +136,7 @@ BrandCourt/
 │   │   ├── services/         # Claim Court engine, OCR, parser, durable worker
 │   │   ├── seed_glowserum.py # Golden demo dataset seeder
 │   │   └── main.py           # Application entrypoint & lifecycle
-│   └── tests/                # 153+ Pytest automated backend tests
+│   └── tests/                # Backend automated tests
 ├── frontend/
 │   ├── src/
 │   │   ├── components/       # UI library, AppShell, 3D Canvas, Review cards
@@ -181,7 +185,9 @@ cp .env.example .env
 alembic upgrade head
 
 # Seed the GlowSerum demo workspace (Optional)
-python -m app.seed_glowserum
+# For a fresh workspace: python -m app.seed_glowserum --email <your-admin-email>
+# For the demo workspace (press Demo button on login):
+python -m app.seed_glowserum --email demo-admin@glowserum.com --demo --demo-password <choose-a-password>
 
 # Start the development server
 uvicorn app.main:app --reload --port 8000
@@ -248,16 +254,20 @@ Settings are loaded via environment variables or a local `.env` file via Pydanti
 
 BrandCourt is continuously evaluated against a 52-case golden evaluation dataset (`data/sample/glowserum_40_posts.jsonl`) reflecting realistic skincare advertising claims, ASCI regulatory requirements, and edge cases.
 
-### Deterministic Regression Benchmark (52 Golden Cases)
+### Deterministic Regression Benchmark (52 Golden Cases — deterministic mode, rules tuned on this set)
 
-| Metric | Result | Target Benchmark | Status |
-|---|---|---|---|
-| **Precision** | `91.4%` | > 85.0% | Pass |
-| **Recall** | `94.1%` | > 90.0% | Pass |
-| **F1 Score** | `92.7%` | > 88.0% | Pass |
-| **False Positive Rate** | `3.8%` | < 5.0% | Pass |
-| **Clean Post Specificity** | `100.0%` (14/14 clean posts) | 100.0% | Pass |
-| **Deterministic Execution Time** | `< 22ms / post` | < 50ms | Pass |
+> **Important:** These results were measured in `MODEL_MODE=deterministic` on the 52-post GlowSerum sample corpus. Rules were iteratively tuned against this same corpus, so this is a regression result, **not** a held-out accuracy estimate. See [docs/EVALUATION.md](docs/EVALUATION.md) for full methodology and limitations.
+
+| Metric | Measured result |
+|---|---:|
+| Cases completed | 52 / 52 |
+| Exact label match | 52 / 52 |
+| Exact-match accuracy (deterministic) | 100% |
+| False flags | 0 |
+| False negatives | 0 |
+| Median worker processing time | 550.54 ms |
+| Slowest worker processing time | 5487.33 ms |
+| Ollama variants (retrieval_and_nli, full_pipeline) | **Not measured** — Ollama service not running |
 
 To run the deterministic evaluation suite:
 
@@ -278,17 +288,52 @@ All pull requests and commits run through a strict automated CI verification pip
 # Frontend Unit & Contract Tests
 cd frontend
 npm run lint
-npm test
+npm test -- --run
 npm run build
 
 # Frontend Playwright End-to-End Suite
 npx playwright install chromium
 npm run test:e2e
 
-# Backend Unit & Integration Tests (153 tests)
+# Backend Unit & Integration Tests (181 passed, 6 skipped — measured 2026-11-12)
 cd backend
+# Install dependencies first (required before pytest):
+pip install -r requirements.txt
 pytest -v
 ```
+
+> **Note on frontend tests:** `npm test -- --run` is correct for Vitest 5.x (the `test.poolOptions` deprecation warning from `npm test` without `--run` is cosmetic and does not affect results).
+>
+> **Note on backend tests:** `pip install -r requirements.txt` must be run from the `backend/` directory before running `pytest`. Of the 6 skipped tests (measured 2026-11-12): 5 are in `tests/test_image_intelligence.py` and require an installed Tesseract executable; 1 is in `tests/test_migrations_clean.py` and requires `TEST_POSTGRES_URL` to be configured. None are failures.
+
+---
+
+## Round 3 Features
+
+Three new intelligence features were added in Round 3. All run in `MODEL_MODE=deterministic`; Ollama-based NLI confirmation requires a configured Ollama service.
+
+### Guideline Health (`/app/brand/guideline-health`)
+Detects vague rules and potentially conflicting rule pairs within your active rule set. Conflict pairs are shown as `candidate_only` without Ollama. To accept a vague-rule fix, click **Accept** — this creates a draft rule version for admin confirmation before it goes live. See [docs/USER_GUIDE.md](docs/USER_GUIDE.md#7-round-3-features--where-to-find-them) for details.
+
+### Precedent Ledger (`/app/intelligence/precedents`)
+Records past reviewer override decisions. When similar copy is re-reviewed, matching precedents (similarity ≥ 0.85) surface on the finding card. Critical findings cannot be downgraded via precedent — a 409 error is returned if attempted.
+
+### Fix Verification (`/app/intelligence/fix-verify`)
+Test a proposed copy edit before resubmitting. The engine runs a full analysis on a temporary revision, checks intent similarity and CTA preservation, and shows whether the fix introduces any new Critical findings. Fixes that add new Critical findings are automatically rejected.
+
+> **India rules pack:** The India rules pack provides starter guidance for internal compliance review workflows. It is not legal advice and must not be substituted for review by a qualified legal professional familiar with current ASCI, ASI, Drugs & Magic Remedies Act, and applicable advertising regulations.
+
+---
+
+## Known Limitations
+
+- **Evaluation corpus:** The 52 GlowSerum posts are fictional and have historical exposure to rule development. The 100% exact-match result is a regression score, not a held-out accuracy estimate.
+- **Ollama variants:** `retrieval_and_nli` and `full_pipeline` checks require a running Ollama service. They were not measured in this session.
+- **Image OCR:** Five expected visual labels exist in the dataset, but corresponding source image files are not included. Image-analysis accuracy is not claimed.
+- **Language coverage:** Hindi/Marathi and mixed-script (Hinglish) content has limited automated coverage. Human review by a fluent speaker is required.
+- **Demo workspace:** The demo runs `MODEL_MODE=deterministic`. Uploaded files are lost on hosting restarts (local disk storage). The free-tier API may sleep when idle.
+- **Workflow gaps:** Comment resolution, email invitations, member removal, and workspace deletion are not fully exposed as end-to-end product actions.
+- **Accessibility:** `axe-core` is a dependency, not evidence of a completed accessibility audit.
 
 ---
 
@@ -320,6 +365,8 @@ pytest -v
 | [docs/EVALUATION.md](docs/EVALUATION.md) | Regression benchmarks, scoring formulas, and test results. |
 | [docs/DISCLOSURES.md](docs/DISCLOSURES.md) | Regulatory boundaries, model disclosures, and hosted demo limits. |
 | [docs/DEMO_AND_USER_SESSIONS.md](docs/DEMO_AND_USER_SESSIONS.md) | Walkthrough script for live demonstrations and testing sessions. |
+| [docs/ROUND_3_REPORT.md](docs/ROUND_3_REPORT.md) | Round 3 implementation report, evidence, and validation results. |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Product roadmap: near-, medium-, and long-term feature plans. |
 
 ---
 

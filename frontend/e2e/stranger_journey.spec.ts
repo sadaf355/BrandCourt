@@ -116,7 +116,7 @@ test.describe('Judge resilience and stranger journey', () => {
     if (await commentBox.isVisible()) {
       await commentBox.fill('Checked by stranger judge walkthrough.')
       await page.getByRole('button', { name: 'Comment', exact: true }).click()
-      await expect(page.getByText('Checked by stranger judge walkthrough.')).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByRole('region', { name: 'Finding comments' }).getByRole('paragraph').filter({ hasText: 'Checked by stranger judge walkthrough.' }).first()).toBeVisible({ timeout: 10_000 })
     }
 
     // Switch role to Reviewer and Manager and approve a clean draft end-to-end
@@ -134,7 +134,7 @@ test.describe('Judge resilience and stranger journey', () => {
 
     const runCleanBtn = page.getByRole('button', { name: /Run Claim Court Check/i })
     await runCleanBtn.click()
-    await expect(page.getByText('Claim Court check complete!')).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText('Claim Court check complete!').first()).toBeVisible({ timeout: 20_000 })
     await expect(runCleanBtn).toBeEnabled({ timeout: 10_000 })
     await page.getByRole('button', { name: /Submit for Review/i }).click()
     await expect(page.getByRole('button', { name: /Start Reviewer Sign-Off/i })).toBeVisible({ timeout: 10_000 })

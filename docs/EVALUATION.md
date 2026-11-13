@@ -1,13 +1,6 @@
 # BrandCourt evaluation
 
-> **Round 3 status (9 November 2026): no fresh three-variant Ollama evaluation has been run.**
-> The current delivery environment has no reachable Ollama endpoint and cannot install the missing
-> `aiosqlite` test dependency. The historic figures below are retained for traceability only;
-> they are not new Phase 6 measurements. The historical 52/52 deterministic result is explicitly
-> a rule-tuned regression, not held-out accuracy. The historical source-citation result is
-> **12/19 = 63.16%**, leaving **7/19 = 36.84%** without the required cited source. The 100%
-> target has not been reached. No miss is hidden or imputed for blocked Ollama variants: their
-> current-run metrics are **not measured**, not zero and not passed.
+> **Measurement conditions (2026-11-12 session):** All results below were produced in `MODEL_MODE=deterministic`. The 52-post GlowSerum dataset was used to tune rules; it is therefore a regression corpus, **not a held-out accuracy estimate**. Ollama variants (`retrieval_and_nli`, `full_pipeline`) were not run in this session as the Ollama service was unavailable; their metrics are **not measured**, not zero, and not claimed to pass. No fresh holdout exists. Historical source-citation result is **12/19 = 63.16%**, leaving **7/19 = 36.84%** without the required cited source.
 
 ## Deterministic regression result: 52 cases, rules tuned on this set, not held-out accuracy
 

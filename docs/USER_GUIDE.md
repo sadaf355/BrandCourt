@@ -98,7 +98,28 @@ Admins manage organization-wide guidelines, brand facts, AI models, and complian
 
 ---
 
-## 6. Governance & Legal Disclosures
+## 7. Round 3 Features — Where to Find Them
+
+Three new intelligence features are introduced in Round 3 to streamline guideline auditing, reviewer alignment, and copy correction:
+
+### 1. Guideline Health (`/app/brand/guideline-health`)
+- **Location:** Navigate to **Brand Rules** -> **Guideline Health** tab.
+- **Functionality:** Scans active brand guidelines for vague wording, missing positive/negative examples, and potential rule contradictions.
+- **Workflow:** Review candidate conflict pairs and vague rules. Click **Accept Fix** to generate a safe draft rule version, which can then be formally confirmed by an administrator.
+
+### 2. Precedent Ledger (`/app/intelligence/precedents`)
+- **Location:** Navigate to **Intelligence** -> **Precedent Ledger** (or via the Reviewer Queue).
+- **Functionality:** Tracks managerial override decisions on prior copy findings to ensure consistent future evaluations.
+- **Safety Invariant:** Precedent suggestions automatically surface on matching copy (similarity >= 0.85). **Critical findings cannot be downgraded by precedent** (attempting to do so triggers an HTTP 409 error).
+
+### 3. Fix Verification (`/app/intelligence/fix-verify`)
+- **Location:** Navigate to **Intelligence** -> **Fix Sandbox** or click **Verify Fix** on any finding card.
+- **Functionality:** Tests proposed copy rewrites on a temporary sandbox revision before committing changes.
+- **Safety Invariant:** Evaluates intent similarity, checks that original calls-to-action (CTAs) are preserved, and immediately rejects any candidate fix that introduces new Critical findings.
+
+---
+
+## 8. Governance & Legal Disclosures
 
 > **IMPORTANT**:
 > - BrandCourt is an internal compliance and workflow verification engine. It **does not publish** directly to any social or external platform.
