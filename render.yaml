@@ -16,7 +16,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
-        sync: false
+        value: https://brandcourt.vercel.app
       - key: STORAGE_BACKEND
         value: s3
       - key: S3_BUCKET
@@ -33,3 +33,9 @@ services:
         value: "true"
       - key: MODEL_MODE
         value: deterministic
+      - key: DEMO_LOGIN_ENABLED
+        value: "true"
+      - key: DEMO_RESET_ON_START
+        value: "false"
+      - key: LOGIN_MAX_FAILURES
+        value: "10"

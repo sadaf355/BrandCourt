@@ -231,22 +231,27 @@ docker compose up --build
 
 Settings are loaded via environment variables or a local `.env` file via Pydantic Settings.
 
-| Variable | Default | Purpose |
+| Variable | Default / Safe Example | Purpose |
 |---|---|---|
-| `APP_ENV` | `development` | Environment mode (`development`, `staging`, `production`). |
-| `SECRET_KEY` | *(required)* | Cryptographic signing secret (min. 32 characters in production). |
-| `DATABASE_URL` | `sqlite+aiosqlite:///./test.db` | PostgreSQL (`postgresql+asyncpg://...`) or SQLite URL. |
-| `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated list of exact allowed origins (no paths/wildcards). |
-| `STORAGE_BACKEND` | `local` | `local` for disk filesystem or `s3` for AWS S3 / Cloudflare R2. |
-| `UPLOAD_DIR` | `uploads` | Local directory for storing uploaded guidelines and creatives. |
-| `S3_BUCKET` | — | Target bucket name when `STORAGE_BACKEND=s3`. |
-| `S3_ENDPOINT_URL` | — | Custom endpoint URL for S3-compatible providers (e.g., Cloudflare R2). |
+| `APP_ENV` | `production` | Environment mode (`production`, `staging`, `development`). In production, enforces strict DB and key validation. |
+| `PORT` | `8000` | HTTP port for server binding in containerized deployments. |
+| `SECRET_KEY` | *(required)* | Cryptographic signing secret for JWT access tokens (minimum 32 characters in production). |
+| `DATABASE_URL` | `postgresql+asyncpg://user:pass@ep-xyz.region.neon.tech/neondb?ssl=require` | Neon PostgreSQL non-pooled connection URL (direct endpoint required for Alembic migrations). |
+| `CORS_ORIGINS` | `https://brandcourt.vercel.app` | Comma-separated list of exact allowed browser origins without trailing slashes. |
+| `STORAGE_BACKEND` | `s3` | Storage driver for uploaded creatives: `s3` for AWS S3 / Cloudflare R2, or `local` for disk filesystem. |
+| `S3_BUCKET` | `brandcourt-creatives` | Target S3 or Cloudflare R2 bucket name for uploaded assets. |
+| `S3_REGION` | `us-east-1` | S3 bucket region (or `auto` for Cloudflare R2). |
+| `S3_ENDPOINT_URL` | `https://<account_id>.r2.cloudflarestorage.com` | Custom endpoint URL for S3-compatible object storage (omit for standard AWS S3). |
+| `S3_ACCESS_KEY_ID` | `your-s3-access-key-id` | S3 or Cloudflare R2 API access key ID. |
+| `S3_SECRET_ACCESS_KEY` | `your-s3-secret-access-key` | S3 or Cloudflare R2 API secret access key. |
 | `JOB_WORKER_ENABLED` | `true` | Starts the async background review queue and 24-hour fact-expiry check within the API process. |
+| `MODEL_MODE` | `deterministic` | Review engine mode: `deterministic` for rule-based Claim Court or `ollama` for local model embeddings. |
 | `DEMO_LOGIN_ENABLED` | `true` | Enables one-click `POST /api/auth/demo-login` strictly for the fictional workspace marked `is_demo=true`. |
-| `DEMO_ADMIN_EMAIL` | `demo-admin@glowserum.com` | Email address used for the fictional demo admin account. |
-| `DEMO_RESET_ON_START` | `false` | Re-initializes the demo workspace records at API startup when `true`. |
-| `MODEL_MODE` | `deterministic` | `deterministic` for rule-based engine or `ollama` for hybrid embeddings. |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama service endpoint if using semantic NLI. |
+| `DEMO_RESET_ON_START` | `false` | When `true`, resets and re-seeds clean demo data on boot; must be `false` after initial deploy. |
+| `LOGIN_MAX_FAILURES` | `10` | Maximum failed sign-in attempts per client IP before temporary rate-limit lockout. |
+| `VITE_API_BASE_URL` | `https://brandcourt-api.onrender.com/api` | Vercel frontend setting pointing to the public backend API endpoint. |
+| `VITE_USE_MOCK` | `false` | Vercel frontend setting to disable mock handlers and connect to the real API. |
+| `VITE_DEMO_LOGIN_ENABLED` | `true` | Vercel frontend setting enabling the Demo button and helper cue on the login page. |
 
 ---
 
@@ -296,7 +301,7 @@ npm run build
 npx playwright install chromium
 npm run test:e2e
 
-# Backend Unit & Integration Tests (181 passed, 6 skipped — measured 2026-11-13)
+# Backend Unit & Integration Tests (182 passed, 6 skipped — measured 2026-11-13)
 cd backend
 # Install dependencies first (required before pytest):
 pip install -r requirements.txt
@@ -344,15 +349,57 @@ Test a proposed copy edit before resubmitting. The engine runs a full analysis o
 1. Link your GitHub repository in [Vercel](https://vercel.com).
 2. Set Root Directory to `./frontend` (or project root with the included `vercel.json`).
 3. Set Environment Variables:
-   - `VITE_API_BASE_URL`: `https://your-backend.onrender.com/api`
+   - `VITE_API_BASE_URL`: `https://brandcourt-api.onrender.com/api`
    - `VITE_USE_MOCK`: `false`
+   - `VITE_DEMO_LOGIN_ENABLED`: `true`
 
 ### 2. Backend on Render / AWS / Railway
 1. Use the provided [render.yaml](render.yaml) or [Dockerfile](Dockerfile).
-2. Set `DATABASE_URL` to your managed PostgreSQL instance (e.g., Neon).
-3. Set `CORS_ORIGINS` to `https://your-brandcourt.vercel.app` (strictly without trailing slash).
+2. Set `DATABASE_URL` to your managed PostgreSQL instance (e.g., Neon direct endpoint).
+3. Set `CORS_ORIGINS` to `https://brandcourt.vercel.app` (strictly without trailing slash).
 4. Set `STORAGE_BACKEND=s3` and configure your S3 / Cloudflare R2 bucket credentials.
-5. The container entrypoint automatically executes `alembic upgrade head` before booting Uvicorn.
+5. The container entrypoint automatically executes `alembic upgrade head` before booting Uvicorn with `--proxy-headers` and `--forwarded-allow-ips="*"`.
+
+### Demo Workspace & Reset Behavior
+1. The shared GlowSerum demo workspace (`is_demo: true`) is provisioned on startup with pre-seeded brand guidelines, active rules, clinical facts, and five demo review drafts.
+2. Setting `DEMO_RESET_ON_START=true` purges stale demo records and completely re-creates demo rules with examples and reworded conflict rules.
+3. With clean re-seeded rules, Guideline Health detects exactly 8 planted issues (4 conflict pairs and 4 vague rules) rather than unconstrained pairs.
+4. After initial deployment, `DEMO_RESET_ON_START` must be set back to `false` in Render environment variables.
+5. Keeping it `false` prevents the demo workspace from being wiped on container restarts, preserving reviewers' and judges' test data.
+
+### Deployment Checklist
+
+Follow these steps to deploy and verify BrandCourt in production:
+
+1. **Set Render Environment Variables**:
+   In your Render dashboard for `brandcourt-api`, configure:
+   - `APP_ENV=production`
+   - `PORT=8000`
+   - `SECRET_KEY=<generate-32+-char-secret>`
+   - `DATABASE_URL=postgresql+asyncpg://<user>:<password>@<neon-host>/<db>?ssl=require` (Neon direct non-pooled endpoint)
+   - `CORS_ORIGINS=https://brandcourt.vercel.app`
+   - `STORAGE_BACKEND=s3` along with `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`
+   - `JOB_WORKER_ENABLED=true`
+   - `MODEL_MODE=deterministic`
+   - `DEMO_LOGIN_ENABLED=true`
+   - `DEMO_RESET_ON_START=true` (for the first deploy only)
+   - `LOGIN_MAX_FAILURES=10`
+
+2. **Set Vercel Environment Variables**:
+   In your Vercel project settings, configure:
+   - `VITE_API_BASE_URL=https://brandcourt-api.onrender.com/api`
+   - `VITE_USE_MOCK=false`
+   - `VITE_DEMO_LOGIN_ENABLED=true`
+
+3. **Deploy & Seed Demo Workspace**:
+   - Trigger deployment on Render (the Dockerfile runs `alembic upgrade head` automatically and starts uvicorn with proxy headers).
+   - Trigger deployment on Vercel.
+   - Once the Render deployment succeeds and seeds the demo data, toggle `DEMO_RESET_ON_START=false` in Render so subsequent container restarts retain judge modifications.
+
+4. **Verify Health & Demo Login**:
+   - Confirm backend health: `curl -s https://brandcourt-api.onrender.com/api/health` returns `{"status":"ok","service":"BrandCourt API","database":"connected"}`.
+   - Confirm demo readiness: `curl -s https://brandcourt-api.onrender.com/api/auth/demo-status` returns `{"enabled":true,"ready":true}`.
+   - Confirm frontend access: Open `https://brandcourt.vercel.app/login`, click the **Demo** button, and verify instant login into the GlowSerum Demo workspace with 5 pre-loaded drafts and 8 Guideline Health issues.
 
 ---
 

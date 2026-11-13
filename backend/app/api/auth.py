@@ -73,12 +73,21 @@ async def register_workspace(body: RegisterWorkspace, db: DBSession):
     await db.commit(); await db.refresh(user)
     return token_view(user, refresh_token)
 
+def get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
+        if client_ip:
+            return client_ip
+    return request.client.host if request.client else "unknown"
+
+
 @router.post('/auth/login')
 async def login(body: LoginRequest, request: Request, db: DBSession):
     email = body.email.lower().strip()
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(minutes=settings.login_window_minutes)
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = get_client_ip(request)
     key = hmac.new(
         settings.secret_key.encode(),
         f"{client_ip}\0{email}".encode(),
@@ -192,7 +201,7 @@ async def demo_login(
         raise HTTPException(422, 'Role must be one of: admin, creator, reviewer, manager.')
 
     # Rate limiting keyed by client IP
-    client_ip = request.client.host if request.client else 'unknown'
+    client_ip = get_client_ip(request)
     key = hmac.new(
         settings.secret_key.encode(),
         f"{client_ip}\0demo-login".encode(),

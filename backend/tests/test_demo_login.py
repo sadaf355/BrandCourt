@@ -282,3 +282,39 @@ def test_demo_login_never_issues_token_for_non_demo_workspace(
     assert resp.status_code == 503
     assert "access_token" not in resp.json()
 
+
+def test_demo_login_rate_limiting_tracks_x_forwarded_for_separately(
+    api_client, test_database, tmp_path: Path, monkeypatch
+):
+    storage = LocalStorage(tmp_path / "uploads")
+    asyncio.run(
+        ensure_demo_workspace(
+            sessions=test_database,
+            storage=storage,
+            upload_dir=tmp_path / "uploads",
+            skip_creatives=True,
+        )
+    )
+
+    monkeypatch.setattr(settings, "demo_login_enabled", True)
+    monkeypatch.setattr(settings, "login_max_failures", 2)
+    set_demo_ready(True)
+
+    headers_ip1 = {"x-forwarded-for": "203.0.113.195"}
+    headers_ip2 = {"x-forwarded-for": "198.51.100.42"}
+
+    # IP 1 uses up its 2 allowed logins
+    r1 = api_client("POST", "/api/auth/demo-login", json={"role": "admin"}, headers=headers_ip1)
+    assert r1.status_code == 200
+    r2 = api_client("POST", "/api/auth/demo-login", json={"role": "admin"}, headers=headers_ip1)
+    assert r2.status_code == 200
+
+    # 3rd attempt from IP 1 is blocked by rate limiting
+    r3 = api_client("POST", "/api/auth/demo-login", json={"role": "admin"}, headers=headers_ip1)
+    assert r3.status_code == 429
+
+    # IP 2 has a separate count and succeeds
+    r_ip2 = api_client("POST", "/api/auth/demo-login", json={"role": "admin"}, headers=headers_ip2)
+    assert r_ip2.status_code == 200
+
+

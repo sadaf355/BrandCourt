@@ -124,7 +124,7 @@ All commands were directly executed in the workspace with recorded outputs:
    - Result: **PASSED** — 5 test files, **19 passed** (0 failed).
 5. **Backend Automated Tests:**
    - Command: `python -m pytest -rs -q` (from `backend/`)
-   - Result: **PASSED** — **181 passed, 6 skipped** in 184.30s.
+   - Result: **PASSED** — **182 passed, 6 skipped** in 267.51s.
    - Skip reasons (exact, from `-rs` output):
      - 5 skipped — `tests/test_image_intelligence.py:38`: `Real OCR integration requires an installed Tesseract executable.`
      - 1 skipped — `tests/test_migrations_clean.py:282`: `TEST_POSTGRES_URL is not configured`
